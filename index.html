@@ -1,0 +1,1284 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Подготовка к контрольным</title>
+<meta name="description" content="Тренажёр контрольных по программированию (Java) и ОПД для студентов 1 курса: варианты на время, автоматическая проверка и разбор ошибок.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:light;--bg:#eef0f3;--sheet:#fff;--ink:#2b2d31;--mut:#8b929c;--line:#dde1e6;--blue:#4b6fd6;--blue2:#3a5bbd;
+ --ok:#2e8b57;--okbg:#eaf6ef;--bad:#d0453a;--badbg:#fdeeec;--part:#b7791f;--codebg:#f6f7f9;--mono:Consolas,'Liberation Mono','Courier New',monospace}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 Montserrat,Arial,sans-serif;overflow-x:clip}
+a{color:var(--blue)}
+code,pre{font-family:var(--mono);font-size:15px}
+code{background:var(--codebg);padding:1px 5px;border-radius:3px;overflow-wrap:anywhere}
+pre,.scroll{overflow-x:auto}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.muted{color:var(--mut)}
+header.top{background:#fff;border-bottom:1px solid var(--line)}
+.top-in{max-width:1180px;margin:0 auto;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+#logo{font-weight:600;font-size:16px;color:var(--ink);text-decoration:none}
+.top-note{color:var(--mut);font-size:13px}
+.band{max-width:1180px;margin:0 auto;padding:24px 20px}
+h1{font-size:26px;font-weight:600;margin:6px 0 8px}
+h2{font-size:19px;font-weight:600;margin:0 0 8px}
+h3{font-size:16px;font-weight:600;margin:0}
+.lede{color:#5d636b;max-width:70ch;margin:0 0 20px}
+.course{background:var(--sheet);border-radius:6px;padding:20px 22px;margin-bottom:14px;display:flex;flex-wrap:wrap;gap:16px 30px;align-items:center;justify-content:space-between}
+.c-info{flex:1 1 420px}.c-info p{margin:4px 0;color:#5d636b}.c-info .meta{color:var(--mut);font-size:13px}
+.c-start{display:flex;gap:10px;flex-wrap:wrap}
+.note{font-size:13px;color:var(--mut);max-width:80ch}
+select,input{font:inherit;color:var(--ink);background:#fff;border:1px solid #c9ced5;border-radius:4px;padding:9px 12px;min-height:42px;font-size:15px}
+select:focus,input:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 2px #dfe6fa}
+.btn{font:500 14px Montserrat,Arial,sans-serif;min-height:42px;padding:9px 18px;border-radius:4px;border:1px solid #c9ced5;background:#fff;color:var(--ink);cursor:pointer}
+.btn:hover{background:#f6f7f9}
+.btn.primary{background:var(--blue);border-color:var(--blue);color:#fff}.btn.primary:hover{background:var(--blue2)}
+.btn.danger{background:var(--bad);border-color:var(--bad);color:#fff}
+.btn:focus-visible,.link:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.link{background:none;border:0;color:var(--blue);font:inherit;font-size:14px;cursor:pointer;padding:6px 4px;min-height:36px}
+.tbl{border-collapse:collapse;width:100%;background:#fff;font-size:14px}
+.tbl th,.tbl td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+.tbl th{color:var(--mut);font-weight:500;font-size:13px}
+.tbl .num{text-align:right;white-space:nowrap}
+/* панель попытки */
+#bar{position:sticky;top:0;z-index:20;background:#fff;border-bottom:1px solid var(--line)}
+.bar-in{max-width:1180px;margin:0 auto;padding:8px 20px;display:flex;align-items:center;gap:6px 18px;flex-wrap:wrap}
+.bar-title{flex:1 1 300px;font-size:14px;font-weight:500}.bar-title span{margin-left:8px;font-weight:400}
+.bar-time{font-size:14px}.timer{font:600 18px var(--mono);font-variant-numeric:tabular-nums}.timer.warn{color:var(--bad)}
+.bar-prog{font-size:13px;color:var(--mut)}
+.btn.finish{background:#fdf1ea;border-color:#f2c4a8;color:var(--blue)}
+@media(min-width:1200px){
+ body.mode-prog #bar{position:fixed;top:72px;right:max(20px,calc(50% - 590px));width:230px;border:1px solid #f2c4a8;background:#fdf6f2;border-radius:6px}
+ body.mode-prog .bar-in{flex-direction:column;align-items:stretch;padding:14px;gap:8px}
+ body.mode-prog .bar-title{flex:none}body.mode-prog .bar-title span{display:block;margin:0}
+ body.mode-prog .btn.finish{background:#fff}
+ body.mode-prog .exam .sheet{margin-right:250px}}
+/* вопросы */
+.sheet{background:var(--sheet);border-radius:6px;padding:26px 30px}
+.qlist{list-style:none;padding:0;margin:0;display:grid;gap:34px}
+.q h3{font-size:17px;font-weight:500;line-height:1.4}
+.qn{color:var(--blue);font-weight:500}
+.code{background:none;padding:0;margin:14px 0 4px;line-height:1.5;font-size:16px;font-weight:600;color:#33363b}
+.call{margin:8px 0 0;font-weight:500}
+.pts{font-size:13px;color:var(--mut);margin:12px 0 10px}
+.howto{font-size:13px;color:var(--mut);margin-top:10px}.howto summary{cursor:pointer}
+.ans{width:100%;font-family:var(--mono);max-width:100%}
+.opts{display:grid;gap:4px}
+.opt{display:flex;gap:14px;align-items:center;padding:6px 0;cursor:pointer;min-height:40px}
+.opt input{min-height:auto;width:22px;height:22px;margin:0;accent-color:var(--blue);flex:none}
+.endrow{margin-top:30px;display:flex;justify-content:flex-start}
+/* ОПД */
+.opd-grid{display:grid;gap:20px}
+@media(min-width:1000px){.opd-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start}.termwrap{position:sticky;top:64px}}
+.task h3{margin:20px 0 8px;font-size:15px}
+.task p{margin:6px 0}
+.t2{margin-top:20px}
+.tree{background:var(--codebg);border-radius:4px;padding:12px 14px;line-height:1.4;margin:0}
+.spec td{font-size:14px}.spec .path{font-family:var(--mono);word-break:break-all;width:52%}
+.content{font-family:var(--mono)}
+.hint{font-size:13px;color:var(--mut)}
+.term-title{background:#2d2f33;color:#c9ccd1;font:13px var(--mono);padding:6px 12px;border-radius:6px 6px 0 0}
+.term{background:#0c0c0c;color:#cccccc;border-radius:0 0 6px 6px;padding:10px 12px;height:min(70vh,620px);overflow-y:auto;font:14px/1.45 var(--mono);cursor:text}
+.tl{white-space:pre-wrap;word-break:break-word}.tl.err{color:#e8846f}
+.ps1{color:#6ec26e;white-space:nowrap}
+.term-line{display:flex;gap:8px;align-items:baseline}
+.term-line input{flex:1;background:transparent;border:0;color:#cccccc;font:inherit;padding:0;min-height:24px;box-shadow:none}
+.term-tools{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px 12px;font-size:13px;margin-top:4px}
+.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-top:12px}
+.fld{display:grid;gap:4px;font-size:14px;font-weight:500}
+.hexin{font-family:var(--mono);text-transform:uppercase}
+/* результаты */
+.res-head{background:#fff;border-radius:6px;padding:22px 30px;display:flex;flex-wrap:wrap;justify-content:space-between;gap:16px;align-items:flex-end;margin-bottom:16px}
+.res-head p{margin:3px 0}
+.score{font-size:40px;font-weight:600;line-height:1.1;color:var(--ink);margin:8px 0!important}
+.score small{font-size:18px;color:var(--mut);font-weight:400}
+.res-btns{display:flex;gap:10px;flex-wrap:wrap}
+.result .sheet.task{margin-bottom:16px}
+.review .q.ok .got{color:var(--ok)}.review .q.part .got{color:var(--part)}.review .q.bad .got{color:var(--bad)}
+.olist{list-style:none;padding:0;margin:8px 0;display:grid;gap:4px}
+.olist li{padding:7px 12px;border-radius:4px;border:1px solid var(--line)}
+.olist li.right{background:var(--okbg);border-color:#bfe2cd}
+.olist li.chosen:not(.right){background:var(--badbg);border-color:#f3c2bd}
+.mk{font-size:12px;color:var(--mut);white-space:nowrap}
+.ra{background:var(--okbg)}
+.explain{background:var(--codebg);border-left:3px solid var(--line);padding:8px 12px;font-size:14px;margin:10px 0 0;color:#4a4f57}
+.check tr.ok td:last-child{color:var(--ok);font-weight:600}.check tr.bad td:last-child{color:var(--bad);font-weight:600}
+.check .path{font-family:var(--mono);font-size:13px;word-break:break-all}
+.only-bad tr.ok{display:none}
+.chk{display:flex;gap:8px;align-items:center;font-size:14px;margin:4px 0 8px}.chk input{min-height:auto;width:18px;height:18px;accent-color:var(--blue)}
+.okmsg{color:var(--ok);font-weight:500}
+.copyrow{display:flex;justify-content:flex-end;margin-top:-34px}
+.result h3{margin-top:20px}
+.sol{max-height:420px;background:var(--codebg);padding:12px 14px;border-radius:4px;font-weight:400;font-size:14px}
+.result .task pre.code{background:var(--codebg);padding:12px 14px;border-radius:4px;font-weight:400;font-size:14px}
+#modal{position:fixed;inset:0;z-index:50;background:rgba(20,24,30,.45);display:grid;place-items:center;padding:16px}
+#modal[hidden]{display:none}
+.dlg{background:#fff;border-radius:6px;max-width:420px;width:100%;padding:22px}
+.dlg h3{margin-bottom:6px}.dlg p{margin:0 0 8px}
+.dlg-btns{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;margin-top:14px}
+footer{margin-top:30px}
+.foot{max-width:1180px;margin:0 auto;padding:18px 20px 30px;display:flex;flex-wrap:wrap;gap:12px 24px;justify-content:space-between;align-items:center;font-size:12px;color:var(--mut)}
+.foot p{margin:0;max-width:80ch}
+#donate{text-decoration:none}
+@media(max-width:600px){.sheet,.res-head{padding:18px 16px}.top-note{display:none}.bar-title{flex-basis:100%;font-size:13px}.bar-title span{display:none}
+ .code{font-size:14px}.copyrow{margin-top:8px}.spec .path{width:auto}}
+</style>
+<script>new MutationObserver(()=>{for(const c of document.querySelectorAll('.stack td:not([data-l])')){let i=0,p=c;while(p=p.previousElementSibling)i+=p.colSpan;c.dataset.l=c.closest('table').rows[0].cells[i]?.textContent||''}}).observe(document,{childList:true,subtree:true})</script>
+</head>
+<body>
+<header class="top"><div class="top-in"><a href="#" id="logo">Подготовка к контрольным</a><span class="top-note">ФПИиКТ, 1 курс</span></div></header>
+<div id="bar" hidden></div>
+<main id="app"></main>
+<footer><div class="foot">
+  <p>Задания составлены по темам контрольных и не являются реальными вариантами. Ответы и история попыток хранятся только в вашем браузере.</p>
+  <a class="btn" id="donate" hidden target="_blank" rel="noopener"></a>
+</div></footer>
+<div id="modal" hidden></div>
+<script>
+/* Генераторы вариантов: Программирование КР1 и ОПД РК1 */
+var GEN = (function () {
+'use strict';
+
+function rng(seed) {
+  let a = seed >>> 0;
+  return function () {
+    a = (a + 0x6D2B79F5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function mk(seed) {
+  const r = rng(seed);
+  const R = {
+    r,
+    int: (a, b) => a + Math.floor(r() * (b - a + 1)),
+    pick: arr => arr[Math.floor(r() * arr.length)],
+    chance: p => r() < p,
+    shuffle: arr => { const a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+  };
+  R.sample = (arr, n) => R.shuffle(arr).slice(0, n);
+  return R;
+}
+function hash(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+const jdiv = (a, b) => { const q = Math.trunc(a / b); return q === 0 ? 0 : q; };
+const jmod = (a, b) => { const m = a % b; return m === 0 ? 0 : m; };
+const L = arr => arr.join('\n');
+
+/* ================= Программирование: задачи с кодом ================= */
+
+function gLoopIf(R) {
+  const dw = R.chance(0.5);
+  const i0 = R.int(0, 3);
+  const lim = dw ? R.int(i0, i0 + 3) : R.int(i0 + 1, i0 + 4);
+  const s0 = R.int(5, 20), x = R.int(i0, i0 + 2), y = x + 1, p = R.int(1, 5), q = R.int(2, 6), m = R.int(1, 4);
+  const body = ['  if (i == ' + x + ') {', '    s += ' + p + ';', '  } else if (i == ' + y + ') {', '    s += ' + q + ';', '  } else {', '    s -= ' + m + ';', '  }', '  i++;'];
+  const code = L(['int i = ' + i0 + ';', 'int s = ' + s0 + ';', dw ? 'do {' : 'while (i < ' + lim + ') {', ...body, dw ? '} while (i < ' + lim + ');' : '}', 'System.out.println(s);']);
+  let i = i0, s = s0; const tr = [];
+  const step = () => { let d; if (i === x) { s += p; d = '+' + p; } else if (i === y) { s += q; d = '+' + q; } else { s -= m; d = '−' + m; } tr.push('i=' + i + ': s' + d + ' → ' + s); i++; };
+  if (dw) { do { step(); } while (i < lim); } else { while (i < lim) step(); }
+  let ex = 'Трассировка: ' + tr.join('; ') + '.';
+  if (dw && i0 >= lim) ex += ' Условие сразу ложно, но тело do-while выполняется хотя бы один раз.';
+  return { code, answer: String(s), explain: ex };
+}
+
+function gSwitch(R) {
+  const i0 = R.int(0, 2), lim = i0 + R.int(3, 4);
+  const vals = R.sample([i0, i0 + 1, i0 + 2, i0 + 3].filter(v => v < lim), 2).sort((a, b) => a - b);
+  const op = () => { const o = R.pick(['+=', '+=', '-=', '*=']); return { o, k: o === '*=' ? 2 : R.int(1, 5) }; };
+  const cases = vals.map(v => Object.assign({ v, br: R.chance(0.6) }, op()));
+  const hasDef = R.chance(0.8);
+  const def = hasDef ? Object.assign({ def: true, br: true }, op()) : null;
+  const s0 = R.int(1, 12);
+  const lines = ['int i = ' + i0 + ';', 'int s = ' + s0 + ';', 'while (i < ' + lim + ') {', '  switch (i) {'];
+  cases.forEach(c => lines.push('    case ' + c.v + ': s ' + c.o + ' ' + c.k + ';' + (c.br ? ' break;' : '')));
+  if (hasDef) lines.push('    default: s ' + def.o + ' ' + def.k + ';');
+  lines.push('  }', '  i++;', '}', 'System.out.println(s);');
+  const list = hasDef ? cases.concat([def]) : cases;
+  let s = s0; const tr = [];
+  const ap = c => { if (c.o === '+=') s += c.k; else if (c.o === '-=') s -= c.k; else s *= c.k; };
+  for (let i = i0; i < lim; i++) {
+    let st = cases.findIndex(c => c.v === i);
+    if (st < 0) st = hasDef ? cases.length : -1;
+    const did = [];
+    if (st >= 0) for (let j = st; j < list.length; j++) { ap(list[j]); did.push((list[j].def ? 'default' : 'case ' + list[j].v) + ' (s ' + list[j].o + ' ' + list[j].k + ')'); if (list[j].br) break; }
+    tr.push('i=' + i + ': ' + (did.length ? did.join(' → ') : 'ничего') + ', s=' + s);
+  }
+  let ex = tr.join('; ') + '.';
+  if (cases.some(c => !c.br)) ex += ' Без break выполнение «проваливается» в следующую ветку.';
+  return { code: L(lines), answer: String(s), explain: ex };
+}
+
+function gForMod(R) {
+  const a = R.int(0, 5), b = a + R.int(6, 12), st = R.pick([1, 2, 2, 3]), m = R.pick([2, 3, 4]), rem = R.pick([0, 1]);
+  const p = R.int(1, 3); let q = R.int(2, 4); if (q === p) q++;
+  const code = L(['int s = 0;', 'for (int i = ' + a + '; i <= ' + b + '; ' + (st === 1 ? 'i++' : 'i += ' + st) + ') {', '  if (i % ' + m + ' == ' + rem + ') {', '    s += ' + p + ';', '  } else {', '    s += ' + q + ';', '  }', '}', 'System.out.println(s);']);
+  let s = 0; const yes = [], no = [];
+  for (let i = a; i <= b; i += st) { if (i % m === rem) { s += p; yes.push(i); } else { s += q; no.push(i); } }
+  return { code, answer: String(s), explain: 'i принимает значения ' + yes.concat(no).sort((x, y) => x - y).join(', ') + '. Условие выполнено для ' + (yes.length ? yes.join(', ') : 'ни одного') + ' (' + yes.length + '×' + p + '), иначе ' + no.length + '×' + q + '. Итого ' + s + '.' };
+}
+
+function gMethod(R) {
+  const name = R.pick(['f', 'g', 'calc']), sv = R.pick(['N', 'A', 'X', 'Q', 'ab', 'Z']);
+  const n = R.int(2, 5), k = R.int(3, 9);
+  const V = [
+    ['s + (n * k)', sv + (n * k), 'Скобки: сначала n * k = ' + (n * k) + ', затем конкатенация со строкой.'],
+    ['s + n * k', sv + (n * k), 'Умножение старше сложения: n * k = ' + (n * k) + ', затем строка + число.'],
+    ['s + n + k', sv + n + k, 'Слева направо: s + n — уже строка, затем к ней приписывается k. Числа не складываются.'],
+    ['n + k + s', (n + k) + sv, 'Слева направо: n + k = ' + (n + k) + ' (оба int), затем приписывается строка.'],
+    ['s + (n + k)', sv + (n + k), 'Скобки: n + k = ' + (n + k) + ', затем конкатенация.'],
+    ['n * k + s + n', (n * k) + sv + n, 'n * k = ' + (n * k) + ', дальше строка: + s, + n приписываются.']
+  ];
+  const v = R.pick(V);
+  const method = L(['static String ' + name + '(String s, int n) {', '  var k = ' + k + ';', '  return ' + v[0] + ';', '}']);
+  const call = name + '("' + sv + '", ' + n + ')';
+  return { prompt: 'Что вернёт метод?', code: method, call: 'при вызове ' + call, answer: v[1], explain: v[2] + ' Результат: ' + v[1] + '.', harness: { members: method, body: 'System.out.println(' + call + ');' } };
+}
+
+function fmtFrac(num, den, dec) {
+  const sc = num * Math.pow(10, dec);
+  let q = Math.floor(sc / den); const r = sc - q * den;
+  if (2 * r >= den) q++;
+  const s = String(q).padStart(dec + 1, '0');
+  return s.slice(0, s.length - dec) + '.' + s.slice(s.length - dec);
+}
+function gPrintf(R) {
+  const B = R.pick([2, 4, 5, 8]), A = R.int(1, 19), C = R.int(1, 3), dec = R.pick([1, 1, 2]);
+  const v = R.int(0, 2); let code, num, den, ex;
+  const f = '"%.' + dec + 'f"';
+  if (v === 0) { code = L(['double d = ' + A + '.0;', 'int n = ' + B + ';', 'System.out.printf(' + f + ', d / n + ' + C + ');']); num = A + C * B; den = B; ex = 'd — double, поэтому деление вещественное: ' + A + '.0 / ' + B + ' + ' + C + '.'; }
+  else if (v === 1) { code = L(['int a = ' + A + ';', 'int b = ' + B + ';', 'System.out.printf(' + f + ', a / b + ' + C + '.0);']); num = jdiv(A, B) + C; den = 1; ex = 'a / b — целочисленное деление: ' + A + ' / ' + B + ' = ' + jdiv(A, B) + '. Только потом прибавляется ' + C + '.0.'; }
+  else { code = L(['int a = ' + A + ';', 'int b = ' + B + ';', 'System.out.printf(' + f + ', (double) a / b);']); num = A; den = B; ex = 'Приведение (double) применяется к a до деления, поэтому деление вещественное.'; }
+  const ans = fmtFrac(num, den, dec);
+  return { code, answer: ans, alt: [ans.replace('.', ',')], explain: ex + ' Формат %.' + dec + 'f — ' + dec + ' знак(а) после точки с округлением. Ответ: ' + ans + ' (в русской локали Java печатает через запятую: ' + ans.replace('.', ',') + ' — принимаются оба).' };
+}
+
+function g2D(R) {
+  const m = [[R.int(1, 9), R.int(1, 9), R.int(1, 9)], [R.int(1, 9), R.int(1, 9), R.int(1, 9)]];
+  const T = R.int(2, 8), U = R.int(2, 8), op = R.pick(['&&', '||']), tr = R.int(0, 1), tc = R.int(0, 2), act = R.pick(['= 0', '*= 2', '+= 10']);
+  const code = L(['int[][] m = {{' + m[0].join(', ') + '}, {' + m[1].join(', ') + '}};', 'if (m[0][0] > ' + T + ' ' + op + ' m[1][1] < ' + U + ') {', '  m[' + tr + '][' + tc + '] ' + act + ';', '}', 'String s = "$";', 'for (int[] row : m) {', '  int sum = 0;', '  for (int x : row) {', '    sum += x;', '  }', '  s += sum + ":";', '}', 'System.out.println(s);']);
+  const c1 = m[0][0] > T, c2 = m[1][1] < U, cond = op === '&&' ? c1 && c2 : c1 || c2;
+  if (cond) { if (act === '= 0') m[tr][tc] = 0; else if (act === '*= 2') m[tr][tc] *= 2; else m[tr][tc] += 10; }
+  const sums = m.map(r => r[0] + r[1] + r[2]);
+  const ans = '$' + sums.map(x => x + ':').join('');
+  return { code, answer: ans, explain: 'm[0][0] > ' + T + ' — ' + c1 + ', m[1][1] < ' + U + ' — ' + c2 + ', условие с ' + op + ' — ' + cond + (cond ? ', элемент m[' + tr + '][' + tc + '] изменён' : ', матрица не меняется') + '. Суммы строк: ' + sums.join(' и ') + '. Ответ: ' + ans };
+}
+
+function gString(R) {
+  const w = R.pick(['java', 'switch', 'program', 'method', 'string', 'object', 'console', 'integer', 'boolean', 'compile']);
+  const n = w.length, v = R.int(0, 4);
+  let expr, ans, ex;
+  if (v === 0) { const a = R.int(0, n - 3), b = R.int(a + 1, n); expr = 's.substring(' + a + ', ' + b + ') + s.length()'; ans = w.slice(a, b) + n; ex = 'substring(' + a + ', ' + b + ') берёт символы с индекса ' + a + ' по ' + (b - 1) + ': "' + w.slice(a, b) + '"; затем строка + число ' + n + ' → конкатенация.'; }
+  else if (v === 1) { const i = R.int(0, n - 1), j = R.int(0, n - 1); expr = 's.charAt(' + i + ') + s.charAt(' + j + ')'; ans = String(w.charCodeAt(i) + w.charCodeAt(j)); ex = 'char + char — это сложение кодов символов (int), а не строка: \'' + w[i] + '\' = ' + w.charCodeAt(i) + ', \'' + w[j] + '\' = ' + w.charCodeAt(j) + '.'; }
+  else if (v === 2) { const i = R.int(0, n - 1), j = R.int(0, n - 1); expr = '"" + s.charAt(' + i + ') + s.charAt(' + j + ')'; ans = w[i] + w[j]; ex = 'Пустая строка в начале превращает всё выражение в конкатенацию: "' + w[i] + '" + "' + w[j] + '".'; }
+  else if (v === 3) { const c = R.chance(0.75) ? w[R.int(0, n - 1)] : R.pick(['x', 'q', 'z']); const a = R.int(1, n - 2); const idx = w.indexOf(c); expr = 's.indexOf(\'' + c + '\') + s.substring(' + a + ')'; ans = idx + w.slice(a); ex = 'indexOf(\'' + c + '\') = ' + idx + (idx < 0 ? ' (символа нет)' : ' (первое вхождение)') + '; int + String → конкатенация с "' + w.slice(a) + '".'; }
+  else { expr = 's.length() + s.charAt(0)'; ans = String(n + w.charCodeAt(0)); ex = 'int + char → int: ' + n + ' + код \'' + w[0] + '\' (' + w.charCodeAt(0) + ').'; }
+  return { code: L(['String s = "' + w + '";', 'System.out.println(' + expr + ');']), answer: ans, explain: ex + ' Ответ: ' + ans };
+}
+
+function gChar(R) {
+  const code0 = R.int(65, 85), c = String.fromCharCode(code0), k = R.int(1, 4), v = R.int(0, 4);
+  let lines, ans, ex;
+  if (v === 0) { lines = ['char c = \'' + c + '\';', 'c += ' + k + ';', 'System.out.println(c);']; ans = String.fromCharCode(code0 + k); ex = 'Составное присваивание c += ' + k + ' сохраняет тип char: символ сдвигается на ' + k + '.'; }
+  else if (v === 1) { lines = ['char c = \'' + c + '\';', 'System.out.println(c + ' + k + ');']; ans = String(code0 + k); ex = 'char + int даёт int: код \'' + c + '\' = ' + code0 + ', плюс ' + k + '.'; }
+  else if (v === 2) { lines = ['char c = \'' + c + '\';', 'System.out.println((char) (c + ' + k + '));']; ans = String.fromCharCode(code0 + k); ex = 'c + ' + k + ' = ' + (code0 + k) + ', приведение (char) превращает код обратно в символ.'; }
+  else if (v === 3) { lines = ['char c = \'' + c + '\';', 'int n = c - \'A\';', 'System.out.println(n);']; ans = String(code0 - 65); ex = 'Разность кодов: ' + code0 + ' − 65.'; }
+  else { lines = ['char c = \'' + c + '\';', 'c++;', 'System.out.println("" + c + ' + k + ');']; ans = String.fromCharCode(code0 + 1) + k; ex = 'c++ даёт \'' + String.fromCharCode(code0 + 1) + '\'; дальше конкатенация строк, поэтому ' + k + ' просто приписывается.'; }
+  return { code: L(lines), answer: ans, explain: ex + ' Ответ: ' + ans };
+}
+
+function gDivMod(R) {
+  let a = 0; while (a === 0) a = R.int(-29, 29);
+  const b = R.pick([2, 3, 4, 5, 7]) * (R.chance(0.2) ? -1 : 1);
+  const ans = jdiv(a, b) + ' ' + jmod(a, b);
+  return { code: L(['int a = ' + a + ';', 'int b = ' + b + ';', 'System.out.println(a / b + " " + a % b);']), answer: ans, explain: 'Целочисленное деление отбрасывает дробную часть (к нулю): ' + a + ' / ' + b + ' = ' + jdiv(a, b) + '. Знак остатка совпадает со знаком делимого: ' + a + ' % ' + b + ' = ' + jmod(a, b) + '.' };
+}
+
+function gConcat(R) {
+  const a = R.int(1, 9), b = R.int(1, 9), c = R.int(1, 9), d = R.int(1, 9), s = R.pick(['x', '=', '#', 'ab']), v = R.int(0, 2);
+  let expr, ans, ex;
+  if (v === 0) { expr = a + ' + ' + b + ' + "' + s + '" + ' + c + ' + ' + d; ans = (a + b) + s + c + d; ex = 'Слева направо: ' + a + ' + ' + b + ' = ' + (a + b) + ' (числа), дальше всё — строка.'; }
+  else if (v === 1) { expr = '"' + s + '" + ' + a + ' + ' + b + ' + ' + c + ' * ' + d; ans = s + a + b + (c * d); ex = 'Строка в начале: числа приписываются по очереди, но ' + c + ' * ' + d + ' = ' + (c * d) + ' вычисляется раньше (приоритет *).'; }
+  else { expr = a + ' + ' + b + ' + "" + (' + c + ' + ' + d + ')'; ans = (a + b) + '' + (c + d); ex = a + ' + ' + b + ' = ' + (a + b) + ', затем строка, а скобки (' + c + ' + ' + d + ') = ' + (c + d) + '.'; }
+  return { code: 'System.out.println(' + expr + ');', answer: ans, explain: ex + ' Ответ: ' + ans };
+}
+
+function gIncr(R) {
+  const a = R.int(2, 9), v = R.int(0, 3);
+  let lines, ans, ex;
+  if (v === 0) { lines = ['int x = ' + a + ';', 'int y = x++ + ++x;', 'System.out.println(x + " " + y);']; ans = (a + 2) + ' ' + (a + a + 2); ex = 'x++ возвращает ' + a + ' (x стало ' + (a + 1) + '), ++x увеличивает до ' + (a + 2) + ' и возвращает ' + (a + 2) + '. y = ' + (2 * a + 2) + '.'; }
+  else if (v === 1) { lines = ['int x = ' + a + ';', 'int y = ++x * 2 + x--;', 'System.out.println(x + " " + y);']; ans = a + ' ' + (3 * a + 3); ex = '++x → ' + (a + 1) + ', ×2 = ' + (2 * a + 2) + '; x-- возвращает ' + (a + 1) + ' и уменьшает x до ' + a + '.'; }
+  else if (v === 2) { lines = ['int x = ' + a + ';', 'x += x++;', 'System.out.println(x);']; ans = String(2 * a); ex = 'x += x++ — это x = x + x++ = ' + a + ' + ' + a + '. Увеличение от x++ затирается присваиванием.'; }
+  else { lines = ['int x = ' + a + ';', 'int y = x-- - --x;', 'System.out.println(x + " " + y);']; ans = (a - 2) + ' 2'; ex = 'x-- возвращает ' + a + ' (x = ' + (a - 1) + '), --x → ' + (a - 2) + '. y = ' + a + ' − ' + (a - 2) + ' = 2.'; }
+  return { code: L(lines), answer: ans, explain: ex + ' Ответ: ' + ans };
+}
+
+function gArrRef(R) {
+  const arr = [R.int(1, 9), R.int(1, 9), R.int(1, 9), R.int(1, 9)], i = R.int(0, 3); let j = R.int(0, 3); if (j === i) j = (i + 1) % 4;
+  const val = R.int(10, 20), v = R.int(0, 2);
+  let lines, ans, ex; const a = arr.slice();
+  if (v === 0) { lines = ['int[] a = {' + arr.join(', ') + '};', 'int[] b = a;', 'b[' + i + '] = ' + val + ';', 'System.out.println(a[' + i + '] + a[' + j + ']);']; a[i] = val; ans = String(a[i] + a[j]); ex = 'b = a копирует ссылку: b и a — один и тот же массив, поэтому a[' + i + '] тоже стал ' + val + '. ' + val + ' + ' + a[j] + ' = ' + (a[i] + a[j]) + ' (числа складываются).'; }
+  else if (v === 1) { lines = ['int[] a = {' + arr.join(', ') + '};', 'int[] b = a.clone();', 'b[' + i + '] = ' + val + ';', 'System.out.println(a[' + i + '] + " " + b[' + i + ']);']; ans = arr[i] + ' ' + val; ex = 'clone() создаёт копию, поэтому изменение b не затрагивает a.'; }
+  else { lines = ['int[] a = {' + arr.join(', ') + '};', 'int[] b = a;', 'a[' + i + '] += b[' + i + '];', 'System.out.println(b[' + i + ']);']; ans = String(arr[i] * 2); ex = 'a и b ссылаются на один массив: a[' + i + '] = ' + arr[i] + ' + ' + arr[i] + ', и b[' + i + '] видит это же значение.'; }
+  return { code: L(lines), answer: ans, explain: ex + ' Ответ: ' + ans };
+}
+
+function gNested(R) {
+  const n = R.int(2, 4), m = R.int(3, 5), k = R.int(2, m), kw = R.pick(['break', 'continue']), add = R.pick(['s += j;', 's += i;', 's += i * j;']);
+  const code = L(['int s = 0;', 'for (int i = 1; i <= ' + n + '; i++) {', '  for (int j = 1; j <= ' + m + '; j++) {', '    if (j == ' + k + ') {', '      ' + kw + ';', '    }', '    ' + add, '  }', '}', 'System.out.println(s);']);
+  let s = 0; const js = [];
+  for (let i = 1; i <= n; i++) for (let j = 1; j <= m; j++) { if (j === k) { if (kw === 'break') break; continue; } if (i === 1) js.push(j); s += add === 's += j;' ? j : add === 's += i;' ? i : i * j; }
+  return { code, answer: String(s), explain: (kw === 'break' ? 'break выходит только из внутреннего цикла' : 'continue пропускает только j = ' + k) + ', поэтому для каждого i обрабатываются j = ' + js.join(', ') + '. Итого s = ' + s + '.' };
+}
+
+function gTernary(R) {
+  const x = R.int(1, 30), A = R.int(15, 25), B = R.int(5, 14);
+  const r = x > A ? 'big' : x > B ? 'mid' : 'small';
+  return { code: L(['int x = ' + x + ';', 'String r = x > ' + A + ' ? "big" : x > ' + B + ' ? "mid" : "small";', 'System.out.println(r + x % 4);']), answer: r + (x % 4), explain: 'x > ' + A + ' — ' + (x > A) + (x > A ? '' : ', x > ' + B + ' — ' + (x > B)) + ' → "' + r + '". x % 4 = ' + (x % 4) + ', приписывается к строке. Ответ: ' + r + (x % 4) };
+}
+
+function gForEach(R) {
+  const arr = [R.int(1, 9), R.int(1, 9), R.int(1, 9), R.int(1, 9)], v = R.int(0, 1), sum = arr.reduce((a, b) => a + b, 0);
+  const loop = v === 0 ? ['for (int x : arr) {', '  x *= 2;', '}'] : ['for (int i = 0; i < arr.length; i++) {', '  arr[i] *= 2;', '}'];
+  const ans = String(v === 0 ? sum : 2 * sum);
+  return { code: L(['int[] arr = {' + arr.join(', ') + '};', ...loop, 'int sum = 0;', 'for (int x : arr) {', '  sum += x;', '}', 'System.out.println(sum);']), answer: ans, explain: (v === 0 ? 'В for-each переменная x — копия элемента; x *= 2 не меняет массив. Сумма исходных элементов: ' : 'Цикл по индексу меняет сами элементы, сумма удваивается: ') + ans + '.' };
+}
+
+function gWhileDigits(R) {
+  const D = R.pick([10, 10, 2, 3]), N = D === 10 ? R.int(10, 99999) : R.int(5, 200);
+  let n = N, c = 0; while (n > 0) { n = jdiv(n, D); c++; }
+  return { code: L(['int n = ' + N + ';', 'int c = 0;', 'while (n > 0) {', '  n /= ' + D + ';', '  c++;', '}', 'System.out.println(c + " " + n);']), answer: c + ' ' + n, explain: 'Цикл делит n на ' + D + ', пока n > 0: ' + c + ' итераций' + (D === 10 ? ' (число цифр в ' + N + ')' : '') + '. После цикла n = 0. Ответ: ' + c + ' 0' };
+}
+
+const CODE = [gLoopIf, gSwitch, gForMod, gMethod, gPrintf, g2D, gString, gChar, gDivMod, gConcat, gIncr, gArrRef, gNested, gTernary, gForEach, gWhileDigits];
+
+/* ================= Теория ================= */
+// [верно?, утверждение, пояснение]
+const POOLS = {
+  loops: { about: 'об инструкциях цикла', items: [
+    [true, 'Циклы могут быть вложенными', 'Любой цикл можно поместить внутрь другого.'],
+    [false, 'Циклы в Java не могут быть вложенными', 'Вложенные циклы разрешены.'],
+    [true, 'continue можно использовать внутри while, do-while и for', 'continue работает во всех видах циклов.'],
+    [true, 'Если условие цикла всегда истинно и в теле нет break, return или исключения, цикл не завершится', 'Это бесконечный цикл.'],
+    [false, 'Цикл do-while не может быть вложенным', 'Любой цикл может быть вложенным.'],
+    [false, 'Тело цикла do-while может не выполниться ни разу', 'do-while проверяет условие после тела, поэтому тело выполняется минимум один раз.'],
+    [true, 'Тело цикла do-while выполняется хотя бы один раз', 'Условие проверяется после тела.'],
+    [true, 'for-each по массиву int[] не позволяет изменить элементы массива через переменную цикла', 'Переменная цикла — копия значения элемента.'],
+    [false, 'Цикл while — цикл с постусловием', 'while — цикл с предусловием; с постусловием — do-while.'],
+    [false, 'Условие цикла while может быть строкой', 'Условие должно иметь тип boolean.'],
+    [true, 'Условие цикла do-while должно иметь тип boolean', 'Как и у всех циклов.'],
+    [false, 'break без метки завершает только текущую итерацию цикла', 'Это делает continue; break завершает весь цикл.'],
+    [true, 'break без метки завершает самый внутренний цикл или switch', 'Внешние циклы продолжают работу.'],
+    [true, 'Цикл for-each по массиву можно заменить циклом for со счётчиком', 'for (int i = 0; i < a.length; i++) обходит те же элементы.'],
+    [true, 'for (;;) { } — бесконечный цикл', 'Все три части заголовка for можно опустить.'],
+    [false, 'В заголовке цикла for обязательно должны быть все три части', 'Любую часть можно опустить: for (;;).']
+  ]},
+  branch: { about: 'об инструкциях ветвления и выбора', items: [
+    [true, 'Выражение в скобках инструкции switch может иметь тип char', 'switch поддерживает char, byte, short, int, их обёртки, String и enum.'],
+    [true, 'Выражение в скобках инструкции switch может иметь тип String', 'Начиная с Java 7.'],
+    [false, 'Выражение в скобках инструкции switch может иметь тип double', 'double, float, long и boolean в switch не допускаются.'],
+    [false, 'Если условие инструкции if ложно, программа завершается с ошибкой', 'Просто не выполняется тело if (или выполняется else).'],
+    [true, 'Если условие в тернарном операторе ложно, результатом будет значение выражения после двоеточия', 'усл ? A : B — при false получаем B.'],
+    [false, 'Тело инструкции if обязано быть блоком в фигурных скобках', 'Одну инструкцию можно писать без скобок.'],
+    [true, 'Инструкции if можно объединять в цепочку с помощью else if', 'if … else if … else.'],
+    [false, 'Условие инструкции if не может быть переменной типа boolean', 'Может: if (flag) { … }.'],
+    [false, 'Условием if может быть целое число, как в языке C', 'В Java if (1) — ошибка компиляции, нужен boolean.'],
+    [true, 'Без break выполнение switch продолжится со следующей ветки case', 'Это «проваливание» (fall-through).'],
+    [true, 'Ветка default в switch необязательна', 'Если её нет и ни один case не подошёл, ничего не выполняется.'],
+    [false, 'Ветка default обязана стоять последней в switch', 'default может стоять в любом месте, хотя обычно его пишут последним.'],
+    [false, 'В одном switch можно указать два одинаковых значения case', 'Повтор значения case — ошибка компиляции.']
+  ]},
+  structure: { about: 'о структуре программы на Java', items: [
+    [true, 'Блочный комментарий ограничивается символами /* и */', ''],
+    [false, 'Имена переменных принято писать заглавными буквами', 'Принят camelCase с маленькой буквы; ЗАГЛАВНЫМИ пишут константы.'],
+    [true, 'В именах Java различаются заглавные и строчные буквы', 'sum и Sum — разные имена.'],
+    [true, 'Комментарии игнорируются компилятором', ''],
+    [true, 'Комментарии не влияют на выполнение программы', ''],
+    [false, 'Текстовая строка заключается в одинарные кавычки', 'В одинарные кавычки заключается символ (char), строка — в двойные.'],
+    [true, 'Текстовая строка заключается в двойные кавычки', ''],
+    [false, 'Параметры метода указываются в квадратных скобках', 'Параметры пишут в круглых скобках.'],
+    [true, 'Файл с public class Calc должен называться Calc.java', 'Имя public-класса совпадает с именем файла.'],
+    [true, 'Компилятор javac создаёт файлы с расширением .class', 'В них байт-код для JVM.'],
+    [false, 'Каждая инструкция в Java заканчивается двоеточием', 'Простые инструкции заканчиваются точкой с запятой.'],
+    [true, 'Простые инструкции заканчиваются точкой с запятой', ''],
+    [false, 'Однострочный комментарий начинается с символа #', 'В Java — с //.'],
+    [true, 'Однострочный комментарий начинается с //', '']
+  ]},
+  arrays: { about: 'о массивах', items: [
+    [true, 'Индексация элементов массива начинается с 0', ''],
+    [false, 'Индексация элементов массива начинается с 1', 'Первый элемент — a[0].'],
+    [true, 'Длину массива можно узнать через поле length', 'a.length — без скобок.'],
+    [false, 'Длину массива можно узнать методом length()', 'length() — метод строки; у массива поле length.'],
+    [true, 'Размер уже созданного массива изменить нельзя', 'Нужно создать новый массив.'],
+    [false, 'Массив int[] может одновременно хранить числа и строки', 'Все элементы массива одного типа.'],
+    [true, 'Элементы нового массива int[] по умолчанию равны 0', ''],
+    [true, 'Элементы нового массива String[] по умолчанию равны null', ''],
+    [false, 'Присваивание b = a копирует все элементы массива a в новый массив b', 'Копируется только ссылка: b и a указывают на один массив.'],
+    [true, 'Обращение a[a.length] вызывает ArrayIndexOutOfBoundsException', 'Последний допустимый индекс — length − 1.'],
+    [false, 'Обращение к несуществующему индексу возвращает 0', 'Будет исключение ArrayIndexOutOfBoundsException.']
+  ]},
+  strings: { about: 'о строках', items: [
+    [true, 'Объекты String неизменяемы', 'Методы вроде toUpperCase() возвращают новую строку.'],
+    [false, 'Содержимое строк правильно сравнивать оператором ==', '== сравнивает ссылки; для содержимого нужен equals.'],
+    [true, 'Для сравнения содержимого строк используется метод equals', ''],
+    [true, 'Метод length() возвращает число символов в строке', ''],
+    [false, 's.charAt(0) возвращает значение типа String', 'charAt возвращает char.'],
+    [true, 'При конкатенации строки с числом получается строка', 'Число преобразуется в текст.'],
+    [false, 'Индексы символов строки начинаются с 1', 'С 0, как и у массивов.'],
+    [true, 's.substring(a, b) возвращает символы с индекса a по b − 1', 'Правая граница не включается.'],
+    [false, 'Метод toUpperCase() изменяет исходную строку', 'Строки неизменяемы, возвращается новая строка.'],
+    [true, 's.indexOf(c) возвращает −1, если символа нет в строке', '']
+  ]},
+  methods: { about: 'о методах', items: [
+    [true, 'Метод с типом void не возвращает значение', ''],
+    [false, 'Метод с типом результата int может завершиться без return', 'Каждый путь выполнения должен вернуть значение — иначе ошибка компиляции.'],
+    [true, 'Можно объявить несколько методов с одним именем и разными параметрами', 'Это перегрузка (overloading).'],
+    [false, 'Перегруженные методы могут отличаться только типом возвращаемого значения', 'Должны отличаться списком параметров.'],
+    [true, 'Аргументы примитивных типов передаются в метод по значению', 'Изменение параметра внутри метода не меняет переменную снаружи.'],
+    [true, 'Статический метод можно вызвать по имени класса, не создавая объект', ''],
+    [false, 'Локальная переменная метода видна в других методах класса', 'Она видна только в своём блоке.'],
+    [true, 'Метод main можно вызвать из другого метода как обычный статический метод', ''],
+    [false, 'Метод может вернуть значение оператором break', 'Значение возвращает return.']
+  ]},
+  types: { about: 'о типах и переменных', items: [
+    [true, 'Константа объявляется с модификатором final', ''],
+    [false, 'Локальную переменную можно использовать до инициализации', 'Компилятор выдаст ошибку.'],
+    [true, 'После int a = 7 / 2; значение a равно 3', 'Целочисленное деление.'],
+    [false, 'Тип boolean может принимать значения 0 и 1', 'Только true и false.'],
+    [true, 'При объявлении через var переменную нужно сразу инициализировать', 'Тип выводится из инициализатора.'],
+    [true, 'char — целочисленный тип, с ним можно выполнять арифметику', 'Например, \'A\' + 1 = 66.'],
+    [false, 'Тип String — примитивный', 'String — ссылочный тип (класс).'],
+    [true, 'int занимает 32 бита', ''],
+    [false, 'Результат (int) 3.99 равен 4', 'Приведение к int отбрасывает дробную часть: 3.']
+  ]}
+};
+
+// [вопрос, правильный, неправильные..., пояснение]
+const SINGLE = [
+  ['Что такое константа в Java?', 'Переменная с модификатором final, значение которой не меняется', ['Переменная с модификатором static', 'Переменная с модификатором public', 'Переменная, объявленная с типом var'], 'final запрещает повторное присваивание.'],
+  ['Файл называется Calc.java, в нём объявлен public class Calc. Какой файл появится после успешного выполнения javac Calc.java?', 'Calc.class', ['Calc.java', 'Calc.jar', 'Calc.exe'], 'javac компилирует исходник в байт-код .class.'],
+  ['Какой метод класса Hello выполняет виртуальная машина Java при запуске командой java Hello?', 'main', ['start', 'Hello', 'run'], 'Точка входа — метод main.'],
+  ['Что произойдёт при обращении arr[0], если arr == null?', 'NullPointerException', ['ArrayIndexOutOfBoundsException', 'Вернётся 0', 'Вернётся null'], 'Массива нет — ссылка null, обращение к нему даёт NullPointerException.'],
+  ['Где видна локальная переменная?', 'Только в блоке, где она объявлена, начиная с места объявления', ['Во всей программе', 'Только в методах main', 'Во всём классе'], 'Область видимости локальной переменной — её блок.'],
+  ['Можно ли вызвать метод main напрямую из другого метода?', 'Да, как обычный статический метод', ['Да, но только через один раз', 'Нет, main нельзя вызывать', 'Да, но только из другого main'], 'main — обычный static-метод.'],
+  ['Что происходит при конкатенации строки с числом в Java?', 'Число преобразуется в строку и присоединяется', ['Ошибка компиляции', 'Строка преобразуется в число и они складываются', 'Число отбрасывается'], '"a" + 5 → "a5".'],
+  ['Что произойдёт при присваивании b = a, где a и b — массивы?', 'b получит ссылку на тот же массив, что и a', ['Создастся полная копия массива a', 'Создастся новый массив той же длины', 'Компилятор выдаст ошибку'], 'Копируется ссылка.'],
+  ['Чему равно значение выражения 7 / 2 для int?', '3', ['3.5', '4', '3.0'], 'Целочисленное деление отбрасывает дробную часть.'],
+  ['Чему равно -7 % 3 в Java?', '-1', ['2', '1', '-2'], 'Знак остатка совпадает со знаком делимого.'],
+  ['Какой тип имеет выражение \'a\' + 1?', 'int', ['char', 'String', 'byte'], 'char при арифметике повышается до int.'],
+  ['Какое значение по умолчанию у элементов нового массива boolean[]?', 'false', ['true', 'null', '0'], ''],
+  ['Как получить длину массива arr?', 'arr.length', ['arr.length()', 'arr.size()', 'length(arr)'], 'У массива поле length.'],
+  ['Как получить длину строки s?', 's.length()', ['s.length', 's.size()', 's.count()'], 'У строки метод length().'],
+  ['Что делает инструкция continue в цикле?', 'Переходит к следующей итерации цикла', ['Завершает цикл', 'Завершает метод', 'Повторяет текущую итерацию'], ''],
+  ['Какой тип должно иметь условие в инструкции if?', 'boolean', ['int', 'Любой числовой', 'String'], ''],
+  ['Сколько раз выполнится тело цикла do { … } while (false);?', '1', ['0', 'Бесконечно', 'Ошибка компиляции'], 'Тело do-while выполняется хотя бы раз.'],
+  ['Сколько раз выполнится тело цикла for (int i = 0; i < 10; i += 3)?', '4', ['3', '10', '5'], 'i = 0, 3, 6, 9.'],
+  ['Что выведет System.out.println("abc".equals("ABC"));?', 'false', ['true', 'Ошибка компиляции', '0'], 'equals учитывает регистр.'],
+  ['Какой оператор — логическое «И» с сокращённым вычислением?', '&&', ['&', '||', 'and'], '&& не вычисляет правую часть, если левая false.'],
+  ['Как правильно создать массив из 5 целых чисел?', 'int[] a = new int[5];', ['int a[5];', 'int[] a = int[5];', 'int a = new int[5];'], ''],
+  ['Что вернёт "hello".indexOf(\'z\')?', '-1', ['0', 'null', '5'], 'Символ не найден.'],
+  ['Какое расширение у файла исходного кода Java?', '.java', ['.class', '.jav', '.jar'], ''],
+  ['Какой модификатор позволяет вызывать метод без создания объекта?', 'static', ['final', 'public', 'void'], ''],
+  ['Что выведет System.out.println(1 + 2 + "3");?', '33', ['123', '6', '15'], '1 + 2 = 3, затем "3" + "3".'],
+  ['Что произойдёт при компиляции: int x = 5; if (x = 5) { }', 'Ошибка компиляции', ['Условие истинно', 'Условие ложно', 'Ошибка во время выполнения'], 'x = 5 имеет тип int, а нужен boolean.'],
+  ['Какой из типов не является примитивным?', 'String', ['int', 'char', 'boolean'], ''],
+  ['Чему будет равно x после int x = (int) 3.99;?', '3', ['4', '3.99', 'Ошибка компиляции'], 'Приведение отбрасывает дробную часть.'],
+  ['Чем println отличается от print?', 'println после вывода переводит строку', ['println выводит только числа', 'print работает быстрее', 'Ничем'], ''],
+  ['Какое ключевое слово завершает метод и возвращает значение?', 'return', ['break', 'exit', 'continue'], '']
+];
+
+function makeMulti(R, key) {
+  const P = POOLS[key], T = P.items.filter(x => x[0]), F = P.items.filter(x => !x[0]);
+  const nT = R.int(2, Math.min(4, T.length));
+  const chosen = R.shuffle(R.sample(T, nT).concat(R.sample(F, Math.min(6 - nT, F.length))));
+  return { type: 'multi', prompt: 'Выберите все верные утверждения ' + P.about + '.', opts: chosen.map(x => x[1]), correct: chosen.map(x => x[0]), notes: chosen.map(x => x[2] || ''), used: chosen.map(x => x[1]) };
+}
+
+function buildProg(seed) {
+  const R = mk(seed);
+  const code = R.sample(CODE, 10).map(g => Object.assign({ type: 'text', prompt: 'Что выведет программа?', pts: 0.06 }, g(R)));
+  const keys = Object.keys(POOLS);
+  const topics = R.sample(keys, 4);
+  const multi = topics.map(k => Object.assign(makeMulti(R, k), { pts: 0.04 }));
+  const used = new Set([].concat(...multi.map(m => m.used)));
+  const tf = [];
+  while (tf.length < 2) {
+    const item = R.pick(POOLS[R.pick(keys)].items);
+    if (used.has(item[1])) continue; used.add(item[1]);
+    tf.push({ type: 'single', prompt: 'Верно ли утверждение: «' + item[1] + '»?', opts: ['Верно', 'Неверно'], correctIdx: item[0] ? 0 : 1, explain: (item[0] ? 'Верно. ' : 'Неверно. ') + (item[2] || ''), pts: 0.04 });
+  }
+  const single = R.sample(SINGLE, 4).map(s => {
+    const opts = R.shuffle([s[1]].concat(s[2]));
+    return { type: 'single', prompt: s[0], opts, correctIdx: opts.indexOf(s[1]), explain: 'Правильный ответ: ' + s[1] + '. ' + (s[3] || ''), pts: 0.04 };
+  });
+  return R.shuffle(code.concat(multi, tf, single));
+}
+
+function norm(s) { return String(s == null ? '' : s).trim().replace(/\s+/g, ' ').replace(/^"(.*)"$/, '$1'); }
+function gradeProgQ(q, a) {
+  if (q.type === 'text') { const ok = a != null && [q.answer].concat(q.alt || []).some(x => norm(x) === norm(a)); return ok ? 1 : 0; }
+  if (q.type === 'single') return a === q.correctIdx ? 1 : 0;
+  if (q.type === 'multi') {
+    const sel = Array.isArray(a) ? a : []; const nT = q.correct.filter(Boolean).length;
+    const good = sel.filter(i => q.correct[i]).length, bad = sel.length - good;
+    return Math.max(0, (good - bad) / nT);
+  }
+  return 0;
+}
+
+/* ================= ОПД ================= */
+const PN = ['bulbasaur', 'charmander', 'squirtle', 'pikachu', 'eevee', 'vulpix', 'jigglypuff', 'meowth', 'psyduck', 'growlithe', 'abra', 'machop', 'geodude', 'ponyta', 'slowpoke', 'magnemite', 'gastly', 'onix', 'drowzee', 'krabby', 'cubone', 'koffing', 'rhyhorn', 'horsea', 'staryu', 'scyther', 'magmar', 'pinsir', 'lapras', 'ditto', 'snorlax', 'dratini', 'chikorita', 'cyndaquil', 'totodile', 'togepi', 'mareep', 'wooper', 'murkrow', 'sneasel', 'larvitar', 'treecko', 'torchic', 'mudkip', 'ralts', 'aron', 'numel', 'swablu', 'feebas', 'absol', 'bagon', 'beldum', 'spheal', 'shuppet'];
+const TY = ['GRASS', 'POISON', 'FIRE', 'WATER', 'BUG', 'FLYING', 'NORMAL', 'ELECTRIC', 'GROUND', 'ROCK', 'PSYCHIC', 'ICE', 'DRAGON', 'GHOST', 'STEEL', 'DARK', 'NONE'];
+const AB = ['Overgrow', 'Blaze', 'Torrent', 'Static', 'Levitate', 'Intimidate', 'Swift Swim', 'Keen Eye', 'Sturdy', 'Inner Focus', 'Run Away', 'Chlorophyll', 'Sand Veil', 'Synchronize', 'Shed Skin'];
+const HB = ['Forest', 'Grassland', 'Mountain', 'Cave', 'Urban', 'Rainforest', 'Beach', 'Freshwater', 'Ocean', 'Tundra', 'Desert', 'Wetlands'];
+
+function fileContent(R) {
+  switch (R.int(0, 4)) {
+    case 0: return 'weight=' + (R.int(10, 9000) / 10).toFixed(1) + ' height=' + R.int(5, 80) + '.0 atk=' + R.int(3, 12) + ' def=' + R.int(3, 12);
+    case 1: return 'Тип покемона ' + R.sample(TY, 2).join(' ');
+    case 2: return 'Способности ' + R.sample(AB, 2).join(' ');
+    case 3: return 'Живет ' + R.sample(HB, 2).join(' ');
+    default: return 'satk=' + R.int(3, 12) + ' sdef=' + R.int(3, 12) + '\nspd=' + R.int(3, 12);
+  }
+}
+function modeStr(m) { let s = ''; for (let sh = 6; sh >= 0; sh -= 3) { const d = (m >> sh) & 7; s += (d & 4 ? 'r' : '-') + (d & 2 ? 'w' : '-') + (d & 1 ? 'x' : '-'); } return s; }
+function octStr(m) { return (m & 511).toString(8).padStart(3, '0'); }
+function verbal(m, dir) {
+  const W = [['владелец', 'должен', 'не имеет'], ['группа-владелец', 'должна', 'не имеет'], ['остальные пользователи', 'должны', 'не имеют']];
+  const obj = dir ? 'директорию' : 'файл';
+  return [6, 3, 0].map((sh, k) => {
+    const d = (m >> sh) & 7, acts = [];
+    if (d & 4) acts.push('читать ' + obj);
+    if (d & 2) acts.push('записывать ' + obj);
+    if (d & 1) acts.push(dir ? 'переходить в директорию' : 'исполнять файл');
+    if (!acts.length) return W[k][0] + ' ' + W[k][2] + ' никаких прав';
+    const t = acts.length > 1 ? acts.slice(0, -1).join(', ') + ' и ' + acts[acts.length - 1] : acts[0];
+    return W[k][0] + ' ' + W[k][1] + ' ' + t;
+  }).join('; ');
+}
+function buildTree(R) {
+  for (let attempt = 0; attempt < 500; attempt++) {
+    const used = new Set(), nodes = [{ path: 'lab0', type: 'd' }];
+    const nm = () => { let n; do { n = R.pick(PN) + R.int(0, 9); } while (used.has(n)); used.add(n); return n; };
+    const file = p => nodes.push({ path: p + '/' + nm(), type: 'f', content: fileContent(R) });
+    const fill = (p, depth) => {
+      const k = R.int(2, 3);
+      for (let j = 0; j < k; j++) {
+        if (depth < 3 && R.chance(depth === 1 ? 0.55 : 0.45)) { const q = p + '/' + nm(); nodes.push({ path: q, type: 'd' }); fill(q, depth + 1); }
+        else file(p);
+      }
+    };
+    for (let i = 0; i < 3; i++) { const q = 'lab0/' + nm(); nodes.push({ path: q, type: 'd' }); fill(q, 1); }
+    const nf = R.int(1, 2); for (let i = 0; i < nf; i++) file('lab0');
+    const seg = n => n.path.split('/').length;
+    const deepDirs = nodes.filter(n => n.type === 'd' && seg(n) >= 4).length;
+    const midDirs = nodes.filter(n => n.type === 'd' && seg(n) >= 3).length;
+    if (nodes.length < 18 || nodes.length > 26 || deepDirs < 1 || midDirs < 3) continue;
+    nodes.forEach(n => {
+      if (n.path === 'lab0') return;
+      let m;
+      if (n.type === 'd') m = (R.pick([7, 7, 5, 3, 1, 6, 5, 3]) << 6) | (R.int(0, 7) << 3) | R.int(0, 7);
+      else m = (R.pick([4, 6, 6, 4, 0, 2]) << 6) | (R.pick([0, 4, 6, 0, 2, 4]) << 3) | R.pick([0, 4, 6, 0, 2, 4]);
+      n.mode = m; n.fmt = R.pick(['oct', 'sym', 'verb']);
+    });
+    nodes.sort((a, b) => a.path < b.path ? -1 : 1);
+    return nodes;
+  }
+  throw new Error('tree');
+}
+function permText(n) {
+  if (n.fmt === 'oct') return octStr(n.mode);
+  if (n.fmt === 'sym') return modeStr(n.mode);
+  return verbal(n.mode, n.type === 'd');
+}
+function refSolution(nodes) {
+  const out = ['cd ~', '# 1) создаём каталоги'];
+  nodes.filter(n => n.type === 'd').forEach(n => out.push('mkdir ' + n.path));
+  out.push('# 2) создаём файлы с содержимым');
+  nodes.filter(n => n.type === 'f').forEach(n => {
+    out.push(n.content.includes('\n') ? 'echo -e "' + n.content.replace(/\n/g, '\\n') + '" > ' + n.path : 'echo "' + n.content + '" > ' + n.path);
+  });
+  out.push('# 3) права — от самых глубоких элементов к верхним,', '#    чтобы не потерять доступ к содержимому каталогов');
+  nodes.filter(n => n.path !== 'lab0').slice().sort((a, b) => b.path.split('/').length - a.path.split('/').length).forEach(n => out.push('chmod ' + octStr(n.mode) + ' ' + n.path + '   # ' + modeStr(n.mode)));
+  return out.join('\n');
+}
+
+function normC(s) { return String(s || '').replace(/\r/g, '').split('\n').map(l => l.trim().replace(/\s+/g, ' ')).join('\n').replace(/\n+$/, '').trim(); }
+function gradeTree(lookup, nodes) {
+  const items = [];
+  nodes.forEach(n => {
+    const g = lookup(n.path), kind = n.type === 'd' ? 'каталог' : 'файл';
+    const okType = g && ((g.t === 'd') === (n.type === 'd'));
+    items.push({ path: n.path, what: 'Создан ' + kind, ok: !!okType, exp: kind, got: !g ? 'нет' : g.t === 'd' ? 'каталог' : 'файл' });
+    if (n.type === 'f') items.push({ path: n.path, what: 'Содержимое', ok: !!okType && normC(g.d) === normC(n.content), exp: n.content, got: okType ? (g.d || '(пусто)').replace(/\n$/, '') : '—' });
+    if (n.mode != null) items.push({ path: n.path, what: 'Права', ok: !!g && (g.m & 511) === n.mode, exp: modeStr(n.mode) + ' (' + octStr(n.mode) + ')', got: g ? modeStr(g.m) + ' (' + octStr(g.m) + ')' : '—' });
+  });
+  return items;
+}
+
+function hex4(v) { return (v & 0xFFFF).toString(16).toUpperCase().padStart(4, '0'); }
+function bin16(v) { return (v & 0xFFFF).toString(2).padStart(16, '0').replace(/(.{4})(?=.)/g, '$1 '); }
+function flagsOf(A, B) {
+  const sum = (A & 0xFFFF) + (B & 0xFFFF), res = sum & 0xFFFF, sres = res >= 0x8000 ? res - 0x10000 : res;
+  return { a: hex4(A), b: hex4(B), s: hex4(res), C: sum > 0xFFFF ? 1 : 0, V: (A + B) !== sres ? 1 : 0, sres };
+}
+function buildFlags(R) {
+  const want = R.pick(['none', 'C', 'V', 'CV']);
+  const big = () => R.int(1000, 32767) * (R.chance(0.5) ? -1 : 1);
+  for (let t = 0; t < 5000; t++) {
+    const A = R.chance(0.8) ? big() : R.int(-999, 999), B = big();
+    const f = flagsOf(A, B), cat = (f.C ? 'C' : '') + (f.V ? 'V' : '') || 'none';
+    if (cat === want) return { A, B };
+  }
+  return { A: 12345, B: -2345 };
+}
+function explainFlags(A, B) {
+  const f = flagsOf(A, B);
+  const conv = (x, h) => x >= 0 ? x + ' = ' + h + '₁₆' : x + ': |' + x + '| = ' + (-x) + ' = ' + hex4(-x) + '₁₆; инвертируем биты и прибавляем 1 → ' + h + '₁₆';
+  return [
+    'A = ' + conv(A, f.a), 'B = ' + conv(B, f.b), '',
+    '   ' + bin16(A) + '   (' + f.a + ')',
+    ' + ' + bin16(B) + '   (' + f.b + ')',
+    ' = ' + bin16(parseInt(f.s, 16)) + '   (' + f.s + ')' + (f.C ? '  и перенос 1 из 15-го разряда' : ''), '',
+    'C = ' + f.C + ': ' + (f.C ? 'есть перенос из старшего (15-го) разряда — сумма без знака больше FFFF.' : 'переноса из старшего разряда нет.'),
+    'V = ' + f.V + ': ' + (f.V ? 'знаки слагаемых одинаковые, а знак результата другой — результат ' + (A + B) + ' не помещается в [−32768; 32767].' : (Math.sign(A) !== Math.sign(B) ? 'слагаемые разных знаков — переполнение невозможно.' : 'знак результата совпадает со знаком слагаемых.')),
+    'Результат как знаковое число: ' + f.sres + (f.V ? ' (а верная сумма ' + (A + B) + ')' : '') + '.'
+  ].join('\n');
+}
+
+function buildOpd(seed) { const R = mk(seed); const nodes = buildTree(R); const fl = buildFlags(R); return { nodes, A: fl.A, B: fl.B }; }
+
+function parseHex(s) {
+  let t = String(s || '').trim().toUpperCase().replace(/\s+/g, '').replace(/^0X/, '').replace(/[H₁₆]+$/, '');
+  if (!/^[0-9A-F]{1,4}$/.test(t)) return null;
+  return parseInt(t, 16);
+}
+
+return { mk, hash, buildProg, gradeProgQ, buildOpd, gradeTree, CODE, POOLS, SINGLE, modeStr, octStr, permText, refSolution, flagsOf, explainFlags, parseHex, hex4, norm, fmtFrac };
+})();
+if (typeof module !== 'undefined') module.exports = GEN;
+
+/* Упрощённый Unix-терминал с проверкой прав (пользователь — владелец всех файлов) */
+var SHELL = (function () {
+'use strict';
+const HOME = '/home/student';
+const ERR = { ENOENT: 'No such file or directory', EACCES: 'Permission denied', ENOTDIR: 'Not a directory', EEXIST: 'File exists', EISDIR: 'Is a directory', ENOTEMPTY: 'Directory not empty' };
+
+function newFs() { return { t: 'd', m: 0o755, c: { home: { t: 'd', m: 0o755, c: { student: { t: 'd', m: 0o755, c: {} } } } } }; }
+function newState() { return { fs: newFs(), cwd: HOME }; }
+const can = (n, bit) => ((n.m >> 6) & bit) !== 0; // 4 r, 2 w, 1 x
+function modeStr(n) { let s = n.t === 'd' ? 'd' : '-'; for (let sh = 6; sh >= 0; sh -= 3) { const d = (n.m >> sh) & 7; s += (d & 4 ? 'r' : '-') + (d & 2 ? 'w' : '-') + (d & 1 ? 'x' : '-'); } return s; }
+function bytes(s) { let b = 0; for (const ch of s) { const c = ch.codePointAt(0); b += c < 0x80 ? 1 : c < 0x800 ? 2 : c < 0x10000 ? 3 : 4; } return b; }
+
+function parseLine(line) {
+  const cmds = []; let cur = { argv: [], redir: [] }, tok = null, quoted = false, pend = null, i = 0;
+  const push = () => {
+    if (tok === null) return;
+    let t = tok; if (!quoted && (t === '~' || t.startsWith('~/'))) t = HOME + t.slice(1);
+    if (pend) { cur.redir.push({ op: pend, file: t }); pend = null; } else cur.argv.push(t);
+    tok = null; quoted = false;
+  };
+  const end = sep => { push(); if (pend) return false; cur.sep = sep; cmds.push(cur); cur = { argv: [], redir: [] }; return true; };
+  while (i < line.length) {
+    const ch = line[i];
+    if (ch === '"' || ch === "'") {
+      if (tok === null) quoted = true;
+      let j = i + 1, s = '';
+      while (j < line.length && line[j] !== ch) {
+        if (ch === '"' && line[j] === '\\' && j + 1 < line.length && '"\\$`'.includes(line[j + 1])) { s += line[j + 1]; j += 2; continue; }
+        s += line[j]; j++;
+      }
+      if (j >= line.length) return { error: 'незакрытая кавычка ' + ch };
+      tok = (tok || '') + s; i = j + 1; continue;
+    }
+    if (ch === '\\') { tok = (tok || '') + (line[i + 1] || ''); i += 2; continue; }
+    if (ch === ' ' || ch === '\t') { push(); i++; continue; }
+    if (ch === '#' && tok === null) break;
+    if (ch === '>') { push(); if (line[i + 1] === '>') { pend = '>>'; i += 2; } else { pend = '>'; i++; } continue; }
+    if (ch === ';') { if (!end(';')) return { error: "syntax error near unexpected token `;'" }; i++; continue; }
+    if (ch === '&' && line[i + 1] === '&') { if (!end('&&')) return { error: "syntax error near unexpected token `&&'" }; i += 2; continue; }
+    if (ch === '|' || ch === '<' || ch === '*' || ch === '?') return { error: 'символ ' + ch + ' (конвейеры, перенаправление ввода, шаблоны) в тренажёре не поддерживается — пишите команды по одной' };
+    tok = (tok || '') + ch; i++;
+  }
+  push();
+  if (pend) return { error: "syntax error near unexpected token `newline'" };
+  cmds.push(cur);
+  return { cmds: cmds.filter(c => c.argv.length || c.redir.length) };
+}
+
+function Shell(st) { this.st = st; }
+Shell.prototype.comps = function (p) {
+  if (p === '~' || p.startsWith('~/')) p = HOME + p.slice(1);
+  const base = p.startsWith('/') ? [] : this.st.cwd.split('/').filter(Boolean);
+  p.split('/').forEach(seg => { if (!seg || seg === '.') return; if (seg === '..') base.pop(); else base.push(seg); });
+  return base;
+};
+Shell.prototype.walk = function (cs) { // x needed on every directory we pass through
+  let n = this.st.fs;
+  for (let i = 0; i < cs.length; i++) {
+    if (n.t !== 'd') return { err: 'ENOTDIR' };
+    if (!can(n, 1)) return { err: 'EACCES' };
+    const ch = n.c[cs[i]]; if (!ch) return { err: 'ENOENT', at: i };
+    n = ch;
+  }
+  return { node: n };
+};
+Shell.prototype.parent = function (cs) {
+  if (!cs.length) return { err: 'EEXIST' };
+  const r = this.walk(cs.slice(0, -1)); if (r.err) return r;
+  if (r.node.t !== 'd') return { err: 'ENOTDIR' };
+  return { node: r.node, name: cs[cs.length - 1] };
+};
+Shell.prototype.lookup = function (rel) { // without permission checks (for grading)
+  let n = this.st.fs; for (const s of (HOME + '/' + rel).split('/').filter(Boolean)) { if (!n || n.t !== 'd') return null; n = n.c[s]; } return n || null;
+};
+Shell.prototype.create = function (cs, node) {
+  const p = this.parent(cs); if (p.err) return p.err;
+  if (!can(p.node, 1)) return 'EACCES';
+  if (p.node.c[p.name]) return 'EEXIST';
+  if (!can(p.node, 2)) return 'EACCES';
+  p.node.c[p.name] = node; return null;
+};
+Shell.prototype.write = function (path, text, append) {
+  const cs = this.comps(path), r = this.walk(cs);
+  if (r.node) {
+    if (r.node.t === 'd') return 'bash: ' + path + ': ' + ERR.EISDIR;
+    if (!can(r.node, 2)) return 'bash: ' + path + ': ' + ERR.EACCES;
+    r.node.d = append ? r.node.d + text : text; return null;
+  }
+  if (r.err === 'ENOENT' && r.at === cs.length - 1) { const e = this.create(cs, { t: 'f', m: 0o644, d: text }); return e ? 'bash: ' + path + ': ' + ERR[e] : null; }
+  return 'bash: ' + path + ': ' + ERR[r.err];
+};
+
+function flags(argv, allowed) {
+  const f = {}, rest = []; let bad = null, stop = false;
+  argv.forEach(a => {
+    if (!stop && a === '--') { stop = true; return; }
+    if (!stop && a.length > 1 && a[0] === '-' && !/^-[0-7]+$/.test(a)) { for (const ch of a.slice(1)) { if (allowed.includes(ch)) f[ch] = true; else bad = ch; } }
+    else rest.push(a);
+  });
+  return { f, rest, bad };
+}
+
+Shell.prototype.exec = function (argv) {
+  const cmd = argv[0], args = argv.slice(1), out = [], err = [];
+  const fn = this['c_' + cmd];
+  if (!fn) return { out: '', err: [cmd + ': command not found (наберите help)'], code: 127 };
+  const code = fn.call(this, args, out, err);
+  return { out: out.join(''), err, code: code || (err.length ? 1 : 0) };
+};
+
+Shell.prototype.c_pwd = function (a, out) { out.push(this.st.cwd + '\n'); };
+Shell.prototype.c_whoami = function (a, out) { out.push('student\n'); };
+Shell.prototype.c_cd = function (a, out, err) {
+  const p = a[0] || '~', cs = this.comps(p), r = this.walk(cs);
+  if (r.err) { err.push('bash: cd: ' + p + ': ' + ERR[r.err]); return; }
+  if (r.node.t !== 'd') { err.push('bash: cd: ' + p + ': ' + ERR.ENOTDIR); return; }
+  if (!can(r.node, 1)) { err.push('bash: cd: ' + p + ': ' + ERR.EACCES); return; }
+  this.st.cwd = '/' + cs.join('/');
+};
+Shell.prototype.c_mkdir = function (a, out, err) {
+  const { f, rest, bad } = flags(a, 'p'); if (bad) { err.push("mkdir: invalid option -- '" + bad + "'"); return; }
+  if (!rest.length) { err.push('mkdir: missing operand'); return; }
+  rest.forEach(p => {
+    const cs = this.comps(p);
+    if (f.p) {
+      for (let k = 1; k <= cs.length; k++) {
+        const r = this.walk(cs.slice(0, k));
+        if (r.node) { if (r.node.t !== 'd') { err.push("mkdir: cannot create directory '" + p + "': " + ERR.EEXIST); return; } continue; }
+        if (r.err !== 'ENOENT') { err.push("mkdir: cannot create directory '" + p + "': " + ERR[r.err]); return; }
+        const e = this.create(cs.slice(0, k), { t: 'd', m: 0o755, c: {} }); if (e) { err.push("mkdir: cannot create directory '" + p + "': " + ERR[e]); return; }
+      }
+    } else { const e = this.create(cs, { t: 'd', m: 0o755, c: {} }); if (e) err.push("mkdir: cannot create directory '" + p + "': " + ERR[e]); }
+  });
+};
+Shell.prototype.c_touch = function (a, out, err) {
+  if (!a.length) { err.push('touch: missing file operand'); return; }
+  a.forEach(p => {
+    const cs = this.comps(p), r = this.walk(cs); if (r.node) return;
+    if (r.err === 'ENOENT' && r.at === cs.length - 1) { const e = this.create(cs, { t: 'f', m: 0o644, d: '' }); if (e) err.push("touch: cannot touch '" + p + "': " + ERR[e]); }
+    else err.push("touch: cannot touch '" + p + "': " + ERR[r.err]);
+  });
+};
+Shell.prototype.c_echo = function (a, out) {
+  let n = false, e = false, i = 0;
+  while (i < a.length && /^-[neE]+$/.test(a[i])) { if (a[i].includes('n')) n = true; if (a[i].includes('e')) e = true; i++; }
+  let s = a.slice(i).join(' ');
+  if (e) s = s.replace(/\\(n|t|\\)/g, (m, c) => c === 'n' ? '\n' : c === 't' ? '\t' : '\\');
+  out.push(s + (n ? '' : '\n'));
+};
+Shell.prototype.c_cat = function (a, out, err) {
+  if (!a.length) { err.push('cat: в тренажёре нужно указать файл (ввод с клавиатуры не поддерживается)'); return; }
+  a.forEach(p => {
+    const r = this.walk(this.comps(p));
+    if (r.err) { err.push('cat: ' + p + ': ' + ERR[r.err]); return; }
+    if (r.node.t === 'd') { err.push('cat: ' + p + ': ' + ERR.EISDIR); return; }
+    if (!can(r.node, 4)) { err.push('cat: ' + p + ': ' + ERR.EACCES); return; }
+    out.push(r.node.d);
+  });
+};
+Shell.prototype.longLine = function (n, name) {
+  return modeStr(n) + ' ' + (n.t === 'd' ? 2 + Object.values(n.c).filter(x => x.t === 'd').length : 1) + ' student studs ' + String(n.t === 'd' ? 4096 : bytes(n.d)).padStart(5) + ' ' + name;
+};
+Shell.prototype.c_ls = function (a, out, err) {
+  const { f, rest, bad } = flags(a, 'laRd1'); if (bad) { err.push("ls: invalid option -- '" + bad + "'"); return; }
+  const paths = rest.length ? rest : ['.'];
+  const show = (n, label, header) => {
+    if (n.t !== 'd' || f.d) { out.push((f.l ? this.longLine(n, label) : label) + '\n'); return; }
+    if (header) out.push(label + ':\n');
+    if (!can(n, 4)) { err.push("ls: cannot open directory '" + label + "': " + ERR.EACCES); return; }
+    const names = Object.keys(n.c).sort();
+    const list = (f.a ? ['.', '..'] : []).concat(names);
+    if (f.l) {
+      if (!can(n, 1)) { list.forEach(nm => out.push('?????????? ? ?       ?     ? ' + nm + '\n')); err.push("ls: cannot access entries of '" + label + "': " + ERR.EACCES); }
+      else { out.push('total ' + names.length * 4 + '\n'); list.forEach(nm => out.push(this.longLine(nm === '.' || nm === '..' ? n : n.c[nm], nm) + '\n')); }
+    } else if (list.length) out.push(list.join('  ') + '\n');
+    if (f.R && can(n, 1)) names.filter(nm => n.c[nm].t === 'd').forEach(nm => { out.push('\n'); show(n.c[nm], label.replace(/\/$/, '') + '/' + nm, true); });
+  };
+  paths.forEach((p, k) => {
+    const r = this.walk(this.comps(p));
+    if (r.err) { err.push("ls: cannot access '" + p + "': " + ERR[r.err]); return; }
+    if (k > 0) out.push('\n');
+    show(r.node, p, paths.length > 1 || f.R);
+  });
+};
+Shell.prototype.c_chmod = function (a, out, err) {
+  // режим может начинаться с '-' (например, -w), поэтому разбираем вручную
+  const args = a.slice(); let R = false;
+  while (args.length && args[0] === '-R') { R = true; args.shift(); }
+  if (args.length < 2) { err.push('chmod: missing operand'); return; }
+  const mode = args[0], files = args.slice(1);
+  let apply;
+  if (/^[0-7]{1,4}$/.test(mode)) { const v = parseInt(mode, 8) & 511; apply = () => v; }
+  else if (/^[ugoa]*[-+=][rwx]*(,[ugoa]*[-+=][rwx]*)*$/.test(mode)) {
+    apply = m => {
+      mode.split(',').forEach(part => {
+        const mm = /^([ugoa]*)([-+=])([rwx]*)$/.exec(part); let who = mm[1] || 'a'; if (who.includes('a')) who = 'ugo';
+        let bits = 0; if (mm[3].includes('r')) bits |= 4; if (mm[3].includes('w')) bits |= 2; if (mm[3].includes('x')) bits |= 1;
+        for (const w of who) { const sh = w === 'u' ? 6 : w === 'g' ? 3 : 0; if (mm[2] === '+') m |= bits << sh; else if (mm[2] === '-') m &= ~(bits << sh); else m = (m & ~(7 << sh)) | (bits << sh); }
+      });
+      return m & 511;
+    };
+  } else { err.push("chmod: invalid mode: '" + mode + "'"); return; }
+  const rec = n => { n.m = apply(n.m); if (R && n.t === 'd') Object.values(n.c).forEach(rec); };
+  files.forEach(p => { const r = this.walk(this.comps(p)); if (r.err) err.push("chmod: cannot access '" + p + "': " + ERR[r.err]); else rec(r.node); });
+};
+Shell.prototype.c_rmdir = function (a, out, err) {
+  if (!a.length) { err.push('rmdir: missing operand'); return; }
+  a.forEach(p => {
+    const cs = this.comps(p), r = this.walk(cs);
+    if (r.err) { err.push("rmdir: failed to remove '" + p + "': " + ERR[r.err]); return; }
+    if (r.node.t !== 'd') { err.push("rmdir: failed to remove '" + p + "': " + ERR.ENOTDIR); return; }
+    if (Object.keys(r.node.c).length) { err.push("rmdir: failed to remove '" + p + "': " + ERR.ENOTEMPTY); return; }
+    const par = this.parent(cs); if (!can(par.node, 2) || !can(par.node, 1)) { err.push("rmdir: failed to remove '" + p + "': " + ERR.EACCES); return; }
+    delete par.node.c[par.name];
+  });
+};
+Shell.prototype.c_rm = function (a, out, err) {
+  const { f, rest, bad } = flags(a, 'rRfi'); if (bad) { err.push("rm: invalid option -- '" + bad + "'"); return; }
+  if (!rest.length) { err.push('rm: missing operand'); return; }
+  const rec = f.r || f.R;
+  const removable = n => n.t !== 'd' || !Object.keys(n.c).length || (can(n, 4) && can(n, 2) && can(n, 1) && Object.values(n.c).every(removable));
+  rest.forEach(p => {
+    const cs = this.comps(p), r = this.walk(cs);
+    if (r.err) { if (!f.f) err.push("rm: cannot remove '" + p + "': " + ERR[r.err]); return; }
+    if (r.node.t === 'd' && !rec) { err.push("rm: cannot remove '" + p + "': " + ERR.EISDIR); return; }
+    const par = this.parent(cs);
+    if (par.err || !can(par.node, 2) || !can(par.node, 1) || !removable(r.node)) { err.push("rm: cannot remove '" + p + "': " + ERR.EACCES); return; }
+    delete par.node.c[par.name];
+  });
+};
+Shell.prototype.c_tree = function (a, out, err) {
+  const p = a.filter(x => x[0] !== '-')[0] || '.';
+  let n = this.st.fs; for (const s of this.comps(p)) { n = n && n.t === 'd' ? n.c[s] : null; }
+  if (!n) { err.push(p + ' [error opening dir]'); return; }
+  out.push('[' + modeStr(n) + ']  ' + p + '\n');
+  let nd = 0, nf = 0;
+  const go = (node, pre) => { const ks = Object.keys(node.c).sort(); ks.forEach((k, i) => { const ch = node.c[k], last = i === ks.length - 1; if (ch.t === 'd') nd++; else nf++; out.push(pre + (last ? '└── ' : '├── ') + '[' + modeStr(ch) + ']  ' + k + '\n'); if (ch.t === 'd') go(ch, pre + (last ? '    ' : '│   ')); }); };
+  if (n.t === 'd') go(n, '');
+  out.push('\n' + nd + ' directories, ' + nf + ' files\n');
+};
+Shell.prototype.c_help = function (a, out) {
+  out.push([
+    'Команды тренажёра:',
+    '  mkdir [-p] DIR...        создать каталог(и)',
+    '  echo [-e] [-n] ТЕКСТ > FILE   записать текст в файл (>> — дописать)',
+    '  touch FILE               создать пустой файл',
+    '  cat FILE...              показать содержимое',
+    '  ls [-l] [-a] [-R] [-d]   список файлов',
+    '  cd DIR, pwd              переход и текущий каталог',
+    '  chmod [-R] MODE FILE...  права: 750, u=rwx,g=rx,o=, g+w, a-x …',
+    '  rm [-r] [-f], rmdir      удаление',
+    '  tree [DIR]               дерево с правами (подсказка тренажёра,',
+    '                           игнорирует права; на Helios её может не быть)',
+    '  clear                    очистить экран',
+    'Несколько команд: через ; или &&, либо вставьте сразу несколько строк.',
+    'Вы — владелец всех файлов, права владельца проверяются как в настоящей системе.',
+    ''
+  ].join('\n'));
+};
+
+Shell.prototype.run = function (line) { // → [{k:'out'|'err', t}], special clear
+  const res = []; const p = parseLine(line);
+  if (p.error) return [{ k: 'err', t: 'bash: ' + p.error }];
+  let last = 0;
+  for (const c of p.cmds) {
+    if (c.prevSep === '&&' && last !== 0) break;
+    if (c.argv[0] === 'clear') { res.push({ k: 'clear' }); last = 0; }
+    else {
+      const r = c.argv.length ? this.exec(c.argv) : { out: '', err: [], code: 0 };
+      if (c.redir.length) {
+        const rd = c.redir[c.redir.length - 1]; const e = this.write(rd.file, r.out, rd.op === '>>');
+        if (e) { r.err.push(e); r.code = 1; }
+      } else if (r.out) res.push({ k: 'out', t: r.out.replace(/\n$/, '') });
+      r.err.forEach(t => res.push({ k: 'err', t }));
+      last = r.code;
+    }
+    c.next = c.sep;
+    const idx = p.cmds.indexOf(c); if (p.cmds[idx + 1]) p.cmds[idx + 1].prevSep = c.sep;
+  }
+  return res;
+};
+
+return { Shell, newState, parseLine, HOME, modeStr };
+})();
+if (typeof module !== 'undefined') module.exports = SHELL;
+
+{
+/* ===== Настройки сайта: меняйте здесь ===== */
+const CFG = {
+  donateUrl: '',            // ссылка на Boosty / CloudTips; пусто — кнопка скрыта
+  donateText: 'Поддержать проект',
+  progMinutes: 30,
+  opdMinutes: 60
+};
+
+const main = document.getElementById('app');
+const bar = document.getElementById('bar');
+const modal = document.getElementById('modal');
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { } },
+  del(k) { try { localStorage.removeItem(k); } catch (e) { } }
+};
+const COURSES = {
+  prog: { title: 'Программирование', name: 'Контрольная работа №1', min: CFG.progMinutes },
+  opd: { title: 'ОПД', name: 'Рубежный контроль №1', min: CFG.opdMinutes }
+};
+let exam = store.get('krt.exam', null);
+let data = null, dataKey = '', timerId = null, shell = null;
+
+function getData() {
+  const key = exam.course + ':' + exam.seed;
+  if (key !== dataKey) { data = exam.course === 'prog' ? GEN.buildProg(exam.seed) : GEN.buildOpd(exam.seed); dataKey = key; }
+  return data;
+}
+function save() { store.set('krt.exam', exam); }
+const fmtTime = ms => { const s = Math.max(0, Math.ceil(ms / 1000)); return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0'); };
+const pct = x => Math.round(x * 100) + '%';
+const dateStr = t => new Date(t).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+
+/* ---------- модальное окно ---------- */
+function ask(html, buttons) {
+  modal.innerHTML = '<div class="dlg" role="dialog" aria-modal="true"><div class="dlg-body">' + html + '</div><div class="dlg-btns">' +
+    buttons.map((b, i) => '<button class="btn ' + (b.cls || '') + '" data-i="' + i + '">' + esc(b.label) + '</button>').join('') + '</div></div>';
+  modal.hidden = false;
+  modal.querySelectorAll('button').forEach(btn => btn.onclick = () => { modal.hidden = true; const f = buttons[+btn.dataset.i].fn; if (f) f(); });
+  const first = modal.querySelector('.btn'); if (first) first.focus();
+}
+
+/* ---------- главная ---------- */
+const varOpts = () => '<option value="r">Случайный вариант</option>' + Array.from({ length: 20 }, (_, i) => '<option value="' + (i + 1) + '">Вариант ' + (i + 1) + '</option>').join('');
+function renderHome() {
+  stopTimer(); bar.hidden = true; document.body.className = '';
+  const hist = store.get('krt.hist', []);
+  main.innerHTML = `
+  <section class="band">
+    <h1>Подготовка к контрольным работам</h1>
+    <p class="lede">Тренировочные варианты для 1 курса ФПИиКТ. Работа выполняется на время, после сдачи показываются баллы и разбор каждого задания.</p>
+    <div class="course">
+      <div class="c-info"><h2>Программирование. Контрольная работа №1</h2>
+        <p>Основы Java: ветвления, циклы, switch, строки, массивы, методы.</p>
+        <p class="meta">20 вопросов · ${CFG.progMinutes} минут · максимум 1.00 балла</p></div>
+      <div class="c-start"><label class="sr" for="vp">Вариант</label><select id="vp">${varOpts()}</select><button class="btn primary" data-start="prog">Начать попытку</button></div>
+    </div>
+    <div class="course">
+      <div class="c-info"><h2>ОПД. Рубежный контроль №1</h2>
+        <p>Задание 1: дерево каталогов, содержимое файлов и права доступа (в терминале).<br>Задание 2: перевод в 16-ю систему, сложение в 16-разрядном дополнительном коде, флаги C и V.</p>
+        <p class="meta">2 задания · ${CFG.opdMinutes} минут</p></div>
+      <div class="c-start"><label class="sr" for="vo">Вариант</label><select id="vo">${varOpts()}</select><button class="btn primary" data-start="opd">Начать попытку</button></div>
+    </div>
+    <p class="note">Варианты 1–20 всегда одинаковые, их удобно решать всей группой. Случайный вариант собирается заново при каждом запуске. Если время закончится, ответы сохранятся и работа будет сдана автоматически.</p>
+  </section>
+  <section class="band">
+    <h2>Мои попытки</h2>
+    ${hist.length ? `<div class="scroll"><table class="tbl"><thead><tr><th>Дата</th><th>Работа</th><th>Вариант</th><th class="num">Результат</th></tr></thead><tbody>
+      ${hist.slice().reverse().map(h => `<tr><td>${esc(dateStr(h.when))}</td><td>${esc(COURSES[h.course].title)}</td><td>${esc(h.label)}</td><td class="num"><b>${esc(h.score)}</b>${h.timeout ? ' <span class="muted">(время вышло)</span>' : ''}</td></tr>`).join('')}
+      </tbody></table></div><button class="link" id="clearHist">Очистить историю</button>` : '<p class="muted">Попыток пока нет. История хранится только в этом браузере.</p>'}
+  </section>`;
+  main.querySelectorAll('[data-start]').forEach(b => b.onclick = () => {
+    const c = b.dataset.start, v = document.getElementById(c === 'prog' ? 'vp' : 'vo').value;
+    startExam(c, v);
+  });
+  const ch = document.getElementById('clearHist');
+  if (ch) ch.onclick = () => ask('<p>Удалить историю попыток в этом браузере?</p>', [{ label: 'Удалить', cls: 'danger', fn: () => { store.del('krt.hist'); renderHome(); } }, { label: 'Отмена' }]);
+  window.scrollTo(0, 0);
+}
+
+function startExam(course, v) {
+  const seed = v === 'r' ? (Math.floor(Math.random() * 4294967296) >>> 0) : GEN.hash(course + '-v' + v);
+  exam = { course, v, seed, label: v === 'r' ? 'Случайный вариант ' + seed.toString(36).toUpperCase() : 'Вариант ' + v, startedAt: Date.now(), dur: COURSES[course].min * 60000, answers: {}, term: [], sh: course === 'opd' ? SHELL.newState() : null };
+  save(); renderExam();
+}
+
+/* ---------- таймер и шапка ---------- */
+function stopTimer() { if (timerId) clearInterval(timerId); timerId = null; }
+function tick() {
+  const left = exam.startedAt + exam.dur - Date.now();
+  const t = document.getElementById('timer');
+  if (t) { t.textContent = fmtTime(left); t.classList.toggle('warn', left < 5 * 60000); }
+  if (left <= 0) finish(true);
+}
+function renderBar() {
+  bar.hidden = false; document.body.className = 'in-exam mode-' + exam.course;
+  bar.innerHTML = `<div class="bar-in"><div class="bar-title">${esc(COURSES[exam.course].title)}. ${esc(COURSES[exam.course].name)}<span class="muted">${esc(exam.label)}</span></div>
+    <div class="bar-time">Осталось <b class="timer" id="timer">--:--</b></div>
+    <div class="bar-prog" id="progress"></div>
+    <button class="btn finish" id="finishBtn">Завершить</button><button class="link" id="quitBtn">Прервать попытку</button></div>`;
+  document.getElementById('finishBtn').onclick = confirmFinish;
+  document.getElementById('quitBtn').onclick = () => ask('<p>Прервать попытку? Ответы не сохранятся и в историю не попадут.</p>', [{ label: 'Прервать', cls: 'danger', fn: () => { exam = null; store.del('krt.exam'); renderHome(); } }, { label: 'Продолжить' }]);
+  stopTimer(); tick(); timerId = setInterval(tick, 500);
+}
+function confirmFinish() {
+  const un = unanswered();
+  ask('<h3>Завершить попытку?</h3><p>' + (un ? 'Без ответа: <b>' + un + '</b>. ' : 'Все ответы заполнены. ') + 'После завершения изменить ответы будет нельзя.</p>', [{ label: 'Завершить', cls: 'primary', fn: () => finish(false) }, { label: 'Вернуться к ответам' }]);
+}
+function unanswered() {
+  const a = exam.answers;
+  if (exam.course === 'prog') return getData().filter((q, i) => { const x = a[i]; return x == null || x === '' || (Array.isArray(x) && !x.length); }).length;
+  return ['a', 'b', 's', 'C', 'V'].filter(k => a[k] == null || a[k] === '').length;
+}
+
+/* ---------- экзамен: программирование ---------- */
+function renderProg() {
+  const qs = getData(), a = exam.answers;
+  main.innerHTML = '<section class="band exam"><div class="sheet"><ol class="qlist">' + qs.map((q, i) => {
+    let inp = '';
+    if (q.type === 'text') inp = `<input class="ans" data-q="${i}" value="${esc(a[i] || '')}" placeholder="Введите строку" autocomplete="off" spellcheck="false" aria-label="Ответ на вопрос ${i + 1}">`;
+    else if (q.type === 'single') inp = '<div class="opts">' + q.opts.map((o, j) => `<label class="opt"><input type="radio" name="q${i}" data-q="${i}" value="${j}" ${a[i] === j ? 'checked' : ''}><span>${esc(o)}</span></label>`).join('') + '</div>';
+    else inp = '<div class="opts">' + q.opts.map((o, j) => `<label class="opt"><input type="checkbox" data-q="${i}" value="${j}" ${(a[i] || []).includes(j) ? 'checked' : ''}><span>${esc(o)}</span></label>`).join('') + '</div>';
+    return `<li class="q" id="q${i}"><h3><span class="qn">${i + 1}.</span> ${esc(q.prompt)}</h3>
+      ${q.code ? `<pre class="code">${esc(q.code)}</pre>` : ''}${q.call ? `<p class="call">${esc(q.call)}</p>` : ''}
+      ${q.type === 'multi' ? '<details class="howto"><summary>Как оценивается?</summary><p>Балл = (верно отмеченные − неверно отмеченные) / число верных утверждений, но не меньше нуля.</p></details>' : ''}
+      <p class="pts">Баллы за вопрос: ${q.pts.toFixed(2)}</p>${inp}</li>`;
+  }).join('') + '</ol><div class="endrow"><button class="btn primary" id="finish2">Завершить попытку</button></div></div></section>';
+  main.oninput = main.onchange = e => {
+    const el = e.target; if (!el.dataset || el.dataset.q == null) return;
+    const i = +el.dataset.q;
+    if (el.type === 'radio') exam.answers[i] = +el.value;
+    else if (el.type === 'checkbox') exam.answers[i] = [...main.querySelectorAll('input[type=checkbox][data-q="' + i + '"]:checked')].map(x => +x.value);
+    else exam.answers[i] = el.value;
+    save(); updProgress();
+  };
+  document.getElementById('finish2').onclick = confirmFinish;
+  updProgress();
+}
+function updProgress() {
+  const p = document.getElementById('progress'); if (!p) return;
+  const total = exam.course === 'prog' ? getData().length : 5, done = total - unanswered();
+  p.textContent = 'Отвечено ' + done + ' из ' + total;
+}
+
+/* ---------- экзамен: ОПД ---------- */
+function treeText(nodes) {
+  const root = { c: {} };
+  nodes.forEach(n => { let cur = root; n.path.split('/').forEach(s => { cur.c[s] = cur.c[s] || { c: {}, n: null }; cur = cur.c[s]; }); cur.n = n; });
+  const lines = [];
+  const go = (node, pre) => { const ks = Object.keys(node.c).sort(); ks.forEach((k, i) => { const ch = node.c[k], last = i === ks.length - 1; lines.push(pre + (last ? '└── ' : '├── ') + k + (ch.n && ch.n.type === 'd' ? '/' : '')); go(ch, pre + (last ? '    ' : '│   ')); }); };
+  lines.push('lab0/'); go(root.c.lab0, '');
+  return lines.join('\n');
+}
+function renderOpd() {
+  const d = getData(), a = exam.answers;
+  shell = new SHELL.Shell(exam.sh);
+  const nodes = d.nodes.filter(n => n.path !== 'lab0');
+  const content = nodes.filter(n => n.type === 'f').map(n => `<tr><td class="path">${esc(n.path)}</td><td class="content">${esc(n.content).replace(/\n/g, '<br>')}</td></tr>`).join('');
+  const perms = nodes.map(n => `<tr><td class="path">${esc(n.path)}${n.type === 'd' ? '/' : ''}</td><td>${esc(GEN.permText(n))}</td></tr>`).join('');
+  main.innerHTML = `<section class="band exam opd">
+  <div class="opd-grid">
+    <div class="sheet task">
+      <h2>Задание 1</h2>
+      <p>В домашнем каталоге создайте приведённое ниже дерево каталогов и файлов, запишите в файлы указанное содержимое и установите права доступа.</p>
+      <h3>1) Дерево каталогов</h3>
+      <pre class="tree">${esc(treeText(d.nodes))}</pre>
+      <h3>2) Содержимое файлов</h3>
+      <div class="scroll"><table class="tbl spec"><thead><tr><th>Файл</th><th>Содержимое</th></tr></thead><tbody>${content}</tbody></table></div>
+      <h3>3) Права доступа</h3>
+      <div class="scroll"><table class="tbl spec"><thead><tr><th>Объект</th><th>Права</th></tr></thead><tbody>${perms}</tbody></table></div>
+      <p class="hint">Многострочное содержимое: <code>echo -e "строка1\\nстрока2" &gt; файл</code></p>
+    </div>
+    <div class="termwrap">
+      <div class="term-title">student@helios: ~</div>
+      <div class="term" id="term"><div class="term-out" id="tout"></div>
+      <div class="term-line"><span class="ps1" id="ps1"></span><input id="tin" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Команда терминала"></div></div>
+      <div class="term-tools"><span class="muted">help — список команд, ↑↓ — история</span><button class="link" id="resetFs">Сбросить файловую систему</button></div>
+    </div>
+  </div>
+  <div class="sheet task t2">
+    <h2>Задание 2</h2>
+    <p>Процессор 16-разрядный, числа представлены в дополнительном коде. Переведите числа <b>A = ${d.A}</b> и <b>B = ${d.B}</b> в шестнадцатеричную систему счисления, выполните сложение <b>A + B</b> и определите значения флагов <b>C</b> (перенос) и <b>V</b> (переполнение).</p>
+    <div class="fields">
+      ${[['a', 'A (16)'], ['b', 'B (16)'], ['s', 'A + B (16)']].map(([k, l]) => `<label class="fld"><span>${l}</span><input class="hexin" data-k="${k}" value="${esc(a[k] || '')}" maxlength="8" placeholder="0000" autocomplete="off" spellcheck="false"></label>`).join('')}
+      ${['C', 'V'].map(k => `<label class="fld"><span>${k}</span><select data-k="${k}"><option value="">—</option><option value="0" ${a[k] === '0' ? 'selected' : ''}>0</option><option value="1" ${a[k] === '1' ? 'selected' : ''}>1</option></select></label>`).join('')}
+    </div>
+  </div>
+  <div class="endrow"><button class="btn primary" id="finish2">Завершить попытку</button></div>
+  </section>`;
+  main.oninput = main.onchange = e => { const k = e.target.dataset && e.target.dataset.k; if (!k) return; exam.answers[k] = e.target.value; save(); updProgress(); };
+  document.getElementById('finish2').onclick = confirmFinish;
+  document.getElementById('resetFs').onclick = () => ask('<p>Удалить всё, что создано в терминале, и начать задание 1 заново? Таймер не сбрасывается.</p>', [{ label: 'Сбросить', cls: 'danger', fn: () => { exam.sh = SHELL.newState(); exam.term = []; save(); renderOpd(); } }, { label: 'Отмена' }]);
+  setupTerm(); updProgress();
+}
+
+let histIdx = -1;
+function setupTerm() {
+  const out = document.getElementById('tout'), inp = document.getElementById('tin'), ps1 = document.getElementById('ps1');
+  const prompt = () => 'student@helios:' + exam.sh.cwd.replace(SHELL.HOME, '~') + '$';
+  const draw = () => {
+    out.innerHTML = exam.term.map(l => '<div class="tl ' + l.k + '">' + (l.k === 'cmd' ? '<span class="ps1">' + esc(l.p) + '</span> ' : '') + esc(l.t) + '</div>').join('');
+    ps1.textContent = prompt();
+    const box = document.getElementById('term'); box.scrollTop = box.scrollHeight;
+  };
+  const runLine = line => {
+    exam.term.push({ k: 'cmd', p: prompt(), t: line });
+    if (line.trim()) {
+      const res = shell.run(line);
+      res.forEach(r => { if (r.k === 'clear') exam.term = []; else exam.term.push(r); });
+    }
+    if (exam.term.length > 400) exam.term = exam.term.slice(-400);
+  };
+  const cmds = () => exam.term.filter(l => l.k === 'cmd' && l.t.trim()).map(l => l.t);
+  inp.onkeydown = e => {
+    if (e.key === 'Enter') { e.preventDefault(); runLine(inp.value); inp.value = ''; histIdx = -1; save(); draw(); }
+    else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+      const h = cmds(); if (!h.length) return; e.preventDefault();
+      histIdx = e.key === 'ArrowUp' ? (histIdx < 0 ? h.length - 1 : Math.max(0, histIdx - 1)) : (histIdx < 0 ? -1 : histIdx + 1);
+      if (histIdx >= h.length) histIdx = -1;
+      inp.value = histIdx < 0 ? '' : h[histIdx];
+    } else if (e.key === 'l' && e.ctrlKey) { e.preventDefault(); exam.term = []; save(); draw(); }
+  };
+  inp.onpaste = e => {
+    const t = (e.clipboardData || window.clipboardData).getData('text');
+    if (!t || !/\n/.test(t)) return;
+    e.preventDefault();
+    const lines = (inp.value + t).replace(/\r/g, '').split('\n');
+    const lastPart = lines.pop();
+    lines.forEach(runLine); inp.value = lastPart; save(); draw();
+  };
+  document.getElementById('term').onclick = () => { if (!window.getSelection().toString()) inp.focus(); };
+  if (!exam.term.length) exam.term.push({ k: 'out', t: 'Вы в домашнем каталоге. Список доступных команд: help' });
+  draw();
+}
+
+function renderExam() {
+  if (exam.finishedAt) return renderResult();
+  renderBar();
+  if (exam.course === 'prog') renderProg(); else renderOpd();
+  window.scrollTo(0, 0);
+}
+
+/* ---------- сдача и результаты ---------- */
+function gradeOpd() {
+  const d = getData(), a = exam.answers, sh = new SHELL.Shell(exam.sh);
+  const items = GEN.gradeTree(p => sh.lookup(p), d.nodes);
+  const t1 = items.filter(i => i.ok).length / items.length;
+  const f = GEN.flagsOf(d.A, d.B);
+  const fx = [['a', 'A₁₆', f.a], ['b', 'B₁₆', f.b], ['s', '(A + B)₁₆', f.s]].map(([k, l, exp]) => { const v = GEN.parseHex(a[k]); return { l, exp, got: a[k] || '', ok: v != null && v === parseInt(exp, 16) }; })
+    .concat(['C', 'V'].map(k => ({ l: k, exp: String(f[k]), got: a[k] || '', ok: a[k] === String(f[k]) })));
+  const t2 = fx.filter(x => x.ok).length / fx.length;
+  return { items, t1, fx, t2, total: 0.6 * t1 + 0.4 * t2, f };
+}
+function gradeProg() {
+  const qs = getData();
+  const per = qs.map((q, i) => GEN.gradeProgQ(q, exam.answers[i]));
+  const score = per.reduce((s, g, i) => s + g * qs[i].pts, 0), max = qs.reduce((s, q) => s + q.pts, 0);
+  return { per, score, max };
+}
+function finish(timeout) {
+  if (!exam || exam.finishedAt) return;
+  stopTimer();
+  exam.finishedAt = Math.min(Date.now(), exam.startedAt + exam.dur); exam.timeout = !!timeout; save();
+  let score;
+  if (exam.course === 'prog') { const g = gradeProg(); score = g.score.toFixed(2) + ' / ' + g.max.toFixed(2); }
+  else score = pct(gradeOpd().total);
+  const hist = store.get('krt.hist', []); hist.push({ course: exam.course, label: exam.label, score, when: exam.finishedAt, timeout: exam.timeout });
+  store.set('krt.hist', hist.slice(-50));
+  renderResult();
+}
+function resultHead(big, sub) {
+  const used = exam.finishedAt - exam.startedAt;
+  return `<div class="res-head"><div><p class="muted">${esc(COURSES[exam.course].title)}. ${esc(COURSES[exam.course].name)}, ${esc(exam.label.toLowerCase())}</p>
+   <p class="score">${big}</p><p>${sub}</p>
+   <p class="muted">Затрачено времени: ${fmtTime(used)} из ${fmtTime(exam.dur)}${exam.timeout ? '. Время вышло, ответы сданы автоматически' : ''}</p></div>
+   <div class="res-btns"><button class="btn primary" id="again">Новая попытка</button><button class="btn" id="home">На главную</button></div></div>`;
+}
+function renderResult() {
+  stopTimer(); bar.hidden = true; document.body.className = '';
+  let html = '';
+  if (exam.course === 'prog') {
+    const qs = getData(), g = gradeProg(), a = exam.answers;
+    const nOk = g.per.filter(x => x === 1).length, nPart = g.per.filter(x => x > 0 && x < 1).length;
+    html = resultHead(g.score.toFixed(2) + '<small> из ' + g.max.toFixed(2) + '</small>', 'Верно: <b>' + nOk + '</b>, частично: <b>' + nPart + '</b>, неверно или без ответа: <b>' + (qs.length - nOk - nPart) + '</b> (' + pct(g.score / g.max) + ')') +
+      '<div class="sheet"><ol class="qlist review">' + qs.map((q, i) => {
+        const gr = g.per[i], cls = gr === 1 ? 'ok' : gr > 0 ? 'part' : 'bad', x = a[i];
+        let body = '';
+        if (q.type === 'text') body = `<p>Ваш ответ: <code class="ua">${x ? esc(x) : '—'}</code></p>${gr === 1 ? '' : `<p>Правильный ответ: <code class="ra">${esc(q.answer)}</code></p>`}`;
+        else if (q.type === 'single') body = '<ul class="olist">' + q.opts.map((o, j) => `<li class="${j === q.correctIdx ? 'right' : ''} ${x === j ? 'chosen' : ''}">${esc(o)}${x === j ? ' <span class="mk">ваш выбор</span>' : ''}</li>`).join('') + '</ul>';
+        else body = '<ul class="olist">' + q.opts.map((o, j) => `<li class="${q.correct[j] ? 'right' : ''} ${(x || []).includes(j) ? 'chosen' : ''}">${esc(o)}${(x || []).includes(j) ? ' <span class="mk">отмечено</span>' : ''}${q.notes[j] && !q.correct[j] ? '<br><span class="muted">' + esc(q.notes[j]) + '</span>' : ''}</li>`).join('') + '</ul>';
+        return `<li class="q ${cls}"><h3><span class="qn">${i + 1}.</span> ${esc(q.prompt)}</h3>
+          ${q.code ? `<pre class="code">${esc(q.code)}</pre>` : ''}${q.call ? `<p class="call">${esc(q.call)}</p>` : ''}<p class="pts got">Полученные баллы за вопрос ${(gr * q.pts).toFixed(2)}/${q.pts.toFixed(2)}</p>${body}
+          ${q.explain ? `<p class="explain">${esc(q.explain)}</p>` : ''}</li>`;
+      }).join('') + '</ol></div>';
+  } else {
+    const d = getData(), g = gradeOpd();
+    const bad = g.items.filter(i => !i.ok);
+    html = resultHead(pct(g.total), 'Задание 1: <b>' + pct(g.t1) + '</b> (' + (g.items.length - bad.length) + ' из ' + g.items.length + ' пунктов), задание 2: <b>' + pct(g.t2) + '</b>') +
+      `<div class="sheet task"><h2>Задание 1</h2>
+       <label class="chk"><input type="checkbox" id="onlyBad" checked> Показывать только ошибки</label>
+       <div class="scroll"><table class="tbl stack check" id="chkTbl"><thead><tr><th>Путь</th><th>Проверка</th><th>Ожидалось</th><th>У вас</th><th></th></tr></thead><tbody>
+       ${g.items.map(i => `<tr class="${i.ok ? 'ok' : 'bad'}"><td class="path">${esc(i.path)}</td><td>${esc(i.what)}</td><td>${esc(i.exp).replace(/\n/g, '<br>')}</td><td>${esc(i.got).replace(/\n/g, '<br>')}</td><td>${i.ok ? '✓' : '✗'}</td></tr>`).join('')}
+       </tbody></table></div>${bad.length ? '' : '<p class="okmsg">Дерево, содержимое и права полностью совпадают с заданием.</p>'}
+       <h3>Возможное решение</h3><div class="copyrow"><button class="btn" id="copySol">Скопировать</button></div><pre class="code sol" id="sol">${esc(GEN.refSolution(d.nodes))}</pre></div>
+       <div class="sheet task"><h2>Задание 2: A = ${d.A}, B = ${d.B}</h2>
+       <div class="scroll"><table class="tbl"><thead><tr><th>Поле</th><th>Ожидалось</th><th>У вас</th><th></th></tr></thead><tbody>
+       ${g.fx.map(x => `<tr class="${x.ok ? 'ok' : 'bad'}"><td>${x.l}</td><td><code>${esc(x.exp)}</code></td><td><code>${esc(x.got || '—')}</code></td><td>${x.ok ? '✓' : '✗'}</td></tr>`).join('')}
+       </tbody></table></div><h3>Разбор</h3><pre class="code">${esc(GEN.explainFlags(d.A, d.B))}</pre></div>`;
+  }
+  main.innerHTML = '<section class="band result' + (exam.course === 'opd' ? ' opd-res' : '') + '">' + html + '</section>';
+  document.getElementById('home').onclick = () => { exam = null; store.del('krt.exam'); renderHome(); };
+  document.getElementById('again').onclick = () => startExam(exam.course, 'r');
+  const ob = document.getElementById('onlyBad');
+  if (ob) { const tb = document.getElementById('chkTbl'); const f = () => tb.classList.toggle('only-bad', ob.checked); ob.onchange = f; f(); }
+  const cs = document.getElementById('copySol');
+  if (cs) cs.onclick = () => { try { navigator.clipboard.writeText(document.getElementById('sol').textContent).then(() => cs.textContent = 'Скопировано', () => cs.textContent = 'Не удалось — выделите вручную'); } catch (e) { cs.textContent = 'Не удалось — выделите вручную'; } };
+  window.scrollTo(0, 0);
+}
+
+/* ---------- старт ---------- */
+const don = document.getElementById('donate');
+if (CFG.donateUrl) { don.href = CFG.donateUrl; don.textContent = CFG.donateText; don.hidden = false; }
+document.getElementById('logo').onclick = e => { e.preventDefault(); if (exam && !exam.finishedAt) return; exam = null; store.del('krt.exam'); renderHome(); };
+if (exam && !exam.finishedAt && Date.now() >= exam.startedAt + exam.dur) finish(true);
+else if (exam) renderExam();
+else renderHome();
+}
+
+</script>
+</body>
+</html>

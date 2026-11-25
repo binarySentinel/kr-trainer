@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Подготовка к контрольным</title>
+<meta name="description" content="Тренажёр контрольных по программированию (Java) и ОПД для студентов 1 курса: варианты на время, автоматическая проверка и разбор ошибок.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:light;--bg:#eef0f3;--sheet:#fff;--ink:#2b2d31;--mut:#8b929c;--line:#dde1e6;--blue:#4b6fd6;--blue2:#3a5bbd;
+ --ok:#2e8b57;--okbg:#eaf6ef;--bad:#d0453a;--badbg:#fdeeec;--part:#b7791f;--codebg:#f6f7f9;--mono:Consolas,'Liberation Mono','Courier New',monospace}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 Montserrat,Arial,sans-serif;overflow-x:clip}
+a{color:var(--blue)}
+code,pre{font-family:var(--mono);font-size:15px}
+code{background:var(--codebg);padding:1px 5px;border-radius:3px;overflow-wrap:anywhere}
+pre,.scroll{overflow-x:auto}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.muted{color:var(--mut)}
+header.top{background:#fff;border-bottom:1px solid var(--line)}
+.top-in{max-width:1180px;margin:0 auto;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+#logo{font-weight:600;font-size:16px;color:var(--ink);text-decoration:none}
+.top-note{color:var(--mut);font-size:13px}
+.band{max-width:1180px;margin:0 auto;padding:24px 20px}
+h1{font-size:26px;font-weight:600;margin:6px 0 8px}
+h2{font-size:19px;font-weight:600;margin:0 0 8px}
+h3{font-size:16px;font-weight:600;margin:0}
+.lede{color:#5d636b;max-width:70ch;margin:0 0 20px}
+.course{background:var(--sheet);border-radius:6px;padding:20px 22px;margin-bottom:14px;display:flex;flex-wrap:wrap;gap:16px 30px;align-items:center;justify-content:space-between}
+.c-info{flex:1 1 420px}.c-info p{margin:4px 0;color:#5d636b}.c-info .meta{color:var(--mut);font-size:13px}
+.c-start{display:flex;gap:10px;flex-wrap:wrap}
+.note{font-size:13px;color:var(--mut);max-width:80ch}
+select,input{font:inherit;color:var(--ink);background:#fff;border:1px solid #c9ced5;border-radius:4px;padding:9px 12px;min-height:42px;font-size:15px}
+select:focus,input:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 2px #dfe6fa}
+.btn{font:500 14px Montserrat,Arial,sans-serif;min-height:42px;padding:9px 18px;border-radius:4px;border:1px solid #c9ced5;background:#fff;color:var(--ink);cursor:pointer}
+.btn:hover{background:#f6f7f9}
+.btn.primary{background:var(--blue);border-color:var(--blue);color:#fff}.btn.primary:hover{background:var(--blue2)}
+.btn.danger{background:var(--bad);border-color:var(--bad);color:#fff}
+.btn:focus-visible,.link:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.link{background:none;border:0;color:var(--blue);font:inherit;font-size:14px;cursor:pointer;padding:6px 4px;min-height:36px}
+.tbl{border-collapse:collapse;width:100%;background:#fff;font-size:14px}
+.tbl th,.tbl td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+.tbl th{color:var(--mut);font-weight:500;font-size:13px}
+.tbl .num{text-align:right;white-space:nowrap}
+/* панель попытки */
+#bar{position:sticky;top:0;z-index:20;background:#fff;border-bottom:1px solid var(--line)}
+.bar-in{max-width:1180px;margin:0 auto;padding:8px 20px;display:flex;align-items:center;gap:6px 18px;flex-wrap:wrap}
+.bar-title{flex:1 1 300px;font-size:14px;font-weight:500}.bar-title span{margin-left:8px;font-weight:400}
+.bar-time{font-size:14px}.timer{font:600 18px var(--mono);font-variant-numeric:tabular-nums}.timer.warn{color:var(--bad)}
+.bar-prog{font-size:13px;color:var(--mut)}
+.btn.finish{background:#fdf1ea;border-color:#f2c4a8;color:var(--blue)}
+@media(min-width:1200px){
+ body.mode-prog #bar{position:fixed;top:72px;right:max(20px,calc(50% - 590px));width:230px;border:1px solid #f2c4a8;background:#fdf6f2;border-radius:6px}
+ body.mode-prog .bar-in{flex-direction:column;align-items:stretch;padding:14px;gap:8px}
+ body.mode-prog .bar-title{flex:none}body.mode-prog .bar-title span{display:block;margin:0}
+ body.mode-prog .btn.finish{background:#fff}
+ body.mode-prog .exam .sheet{margin-right:250px}}
+/* вопросы */
+.sheet{background:var(--sheet);border-radius:6px;padding:26px 30px}
+.qlist{list-style:none;padding:0;margin:0;display:grid;gap:34px}
+.q h3{font-size:17px;font-weight:500;line-height:1.4}
+.qn{color:var(--blue);font-weight:500}
+.code{background:none;padding:0;margin:14px 0 4px;line-height:1.5;font-size:16px;font-weight:600;color:#33363b}
+.call{margin:8px 0 0;font-weight:500}
+.pts{font-size:13px;color:var(--mut);margin:12px 0 10px}
+.howto{font-size:13px;color:var(--mut);margin-top:10px}.howto summary{cursor:pointer}
+.ans{width:100%;font-family:var(--mono);max-width:100%}
+.opts{display:grid;gap:4px}
+.opt{display:flex;gap:14px;align-items:center;padding:6px 0;cursor:pointer;min-height:40px}
+.opt input{min-height:auto;width:22px;height:22px;margin:0;accent-color:var(--blue);flex:none}
+.endrow{margin-top:30px;display:flex;justify-content:flex-start}
+/* ОПД */
+.opd-grid{display:grid;gap:20px}
+@media(min-width:1000px){.opd-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start}.termwrap{position:sticky;top:64px}}
+.task h3{margin:20px 0 8px;font-size:15px}
+.task p{margin:6px 0}
+.t2{margin-top:20px}
+.tree{background:var(--codebg);border-radius:4px;padding:12px 14px;line-height:1.4;margin:0}
+.spec td{font-size:14px}.spec .path{font-family:var(--mono);word-break:break-all;width:52%}
+.content{font-family:var(--mono)}
+.hint{font-size:13px;color:var(--mut)}
+.term-title{background:#2d2f33;color:#c9ccd1;font:13px var(--mono);padding:6px 12px;border-radius:6px 6px 0 0}
+.term{background:#0c0c0c;color:#cccccc;border-radius:0 0 6px 6px;padding:10px 12px;height:min(70vh,620px);overflow-y:auto;font:14px/1.45 var(--mono);cursor:text}
+.tl{white-space:pre-wrap;word-break:break-word}.tl.err{color:#e8846f}
+.ps1{color:#6ec26e;white-space:nowrap}
+.term-line{display:flex;gap:8px;align-items:baseline}
+.term-line input{flex:1;background:transparent;border:0;color:#cccccc;font:inherit;padding:0;min-height:24px;box-shadow:none}
+.term-tools{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px 12px;font-size:13px;margin-top:4px}
+.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-top:12px}
+.fld{display:grid;gap:4px;font-size:14px;font-weight:500}
+.hexin{font-family:var(--mono);text-transform:uppercase}
+/* результаты */
+.res-head{background:#fff;border-radius:6px;padding:22px 30px;display:flex;flex-wrap:wrap;justify-content:space-between;gap:16px;align-items:flex-end;margin-bottom:16px}
+.res-head p{margin:3px 0}
+.score{font-size:40px;font-weight:600;line-height:1.1;color:var(--ink);margin:8px 0!important}
+.score small{font-size:18px;color:var(--mut);font-weight:400}
+.res-btns{display:flex;gap:10px;flex-wrap:wrap}
+.result .sheet.task{margin-bottom:16px}
+.review .q.ok .got{color:var(--ok)}.review .q.part .got{color:var(--part)}.review .q.bad .got{color:var(--bad)}
+.olist{list-style:none;padding:0;margin:8px 0;display:grid;gap:4px}
+.olist li{padding:7px 12px;border-radius:4px;border:1px solid var(--line)}
+.olist li.right{background:var(--okbg);border-color:#bfe2cd}
+.olist li.chosen:not(.right){background:var(--badbg);border-color:#f3c2bd}
+.mk{font-size:12px;color:var(--mut);white-space:nowrap}
+.ra{background:var(--okbg)}
+.explain{background:var(--codebg);border-left:3px solid var(--line);padding:8px 12px;font-size:14px;margin:10px 0 0;color:#4a4f57}
+.check tr.ok td:last-child{color:var(--ok);font-weight:600}.check tr.bad td:last-child{color:var(--bad);font-weight:600}
+.check .path{font-family:var(--mono);font-size:13px;word-break:break-all}
+.only-bad tr.ok{display:none}
+.chk{display:flex;gap:8px;align-items:center;font-size:14px;margin:4px 0 8px}.chk input{min-height:auto;width:18px;height:18px;accent-color:var(--blue)}
+.okmsg{color:var(--ok);font-weight:500}
+.copyrow{display:flex;justify-content:flex-end;margin-top:-34px}
+.result h3{margin-top:20px}
+.sol{max-height:420px;background:var(--codebg);padding:12px 14px;border-radius:4px;font-weight:400;font-size:14px}
+.result .task pre.code{background:var(--codebg);padding:12px 14px;border-radius:4px;font-weight:400;font-size:14px}
+#modal{position:fixed;inset:0;z-index:50;background:rgba(20,24,30,.45);display:grid;place-items:center;padding:16px}
+#modal[hidden]{display:none}
+.dlg{background:#fff;border-radius:6px;max-width:420px;width:100%;padding:22px}
+.dlg h3{margin-bottom:6px}.dlg p{margin:0 0 8px}
+.dlg-btns{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;margin-top:14px}
+footer{margin-top:30px}
+.foot{max-width:1180px;margin:0 auto;padding:18px 20px 30px;display:flex;flex-wrap:wrap;gap:12px 24px;justify-content:space-between;align-items:center;font-size:12px;color:var(--mut)}
+.foot p{margin:0;max-width:80ch}
+#donate{text-decoration:none}
+@media(max-width:600px){.sheet,.res-head{padding:18px 16px}.top-note{display:none}.bar-title{flex-basis:100%;font-size:13px}.bar-title span{display:none}
+ .code{font-size:14px}.copyrow{margin-top:8px}.spec .path{width:auto}}
+</style>
+<script>new MutationObserver(()=>{for(const c of document.querySelectorAll('.stack td:not([data-l])')){let i=0,p=c;while(p=p.previousElementSibling)i+=p.colSpan;c.dataset.l=c.closest('table').rows[0].cells[i]?.textContent||''}}).observe(document,{childList:true,subtree:true})</script>
+</head>
+<body>
+<header class="top"><div class="top-in"><a href="#" id="logo">Подготовка к контрольным</a><span class="top-note">ФПИиКТ, 1 курс</span></div></header>
+<div id="bar" hidden></div>
+<main id="app"></main>
+<footer><div class="foot">
+  <p>Задания составлены по темам контрольных и не являются реальными вариантами. Ответы и история попыток хранятся только в вашем браузере.</p>
+  <a class="btn" id="donate" hidden target="_blank" rel="noopener"></a>
+</div></footer>
+<div id="modal" hidden></div>
+<script>
+/*GEN*/
+/*SHELL*/
+/*APP*/
+</script>
+</body>
+</html>
