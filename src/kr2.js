@@ -208,11 +208,15 @@ function build(seed) {
   const R = mk(seed);
   const keys = R.sample(['I', 'D', 'SO', 'I', 'D', 'SO', 'S', 'O', 'L'], 9);
   const sol = []; for (const k of keys) { if (!sol.includes(k)) sol.push(k); if (sol.length === 3) break; }
-  const qs = sol.map(k => solidQ(R, k)).concat([genOverride(R), genInner(R), genAbstract(R), genExc(R), genEnum(R), genRecord(R), genIface(R)]);
-  return qs.map(q => Object.assign({ type: q.type || 'multi' }, q));
+  const theory = sol.map(k => solidQ(R, k)).concat([genOverride(R), genInner(R), genAbstract(R), genExc(R), genEnum(R), genRecord(R), genIface(R)])
+    .map(q => Object.assign({ type: q.type || 'multi', pts: 0.04 }, q));
+  const code = (typeof KR2CODE !== 'undefined' ? KR2CODE : require('./kr2code.js')).build(R).map(q => Object.assign({ pts: 0.06 }, q));
+  return R.shuffle(theory.concat(code));
 }
 function normCode(s) { return String(s || '').replace(/\s+/g, '').replace(/;+$/, '').toLowerCase(); }
 function grade(q, a) {
+  if (q.type === 'single') return a === q.correctIdx ? 1 : 0;
+  if (q.type === 'text' && !q.accept) return a != null && String(a).trim().replace(/\s+/g, ' ').replace(/^"(.*)"$/, '$1') === q.answer ? 1 : 0;
   if (q.type === 'text') return a != null && q.accept.some(x => normCode(x) === normCode(a)) ? 1 : 0;
   const sel = Array.isArray(a) ? a : [], nT = q.correct.filter(Boolean).length;
   const good = sel.filter(i => q.correct[i]).length, bad = sel.length - good;

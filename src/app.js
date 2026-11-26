@@ -24,8 +24,8 @@ const GROUPS = {
 const COURSES = {
   prog: { group: 'prog', title: 'Программирование', name: 'Контрольная работа №1', short: 'КР №1', min: CFG.progMinutes,
     desc: 'Основы Java: ветвления, циклы, switch, строки, массивы, методы.', meta: '20 вопросов · ' + CFG.progMinutes + ' минут · максимум 1.00 балла' },
-  prog2: { group: 'prog', title: 'Программирование', name: 'Контрольная работа №2', short: 'КР №2', min: 15,
-    desc: 'ООП в Java: принципы SOLID, переопределение методов, вложенные классы, исключения, enum, record, интерфейсы.', meta: '10 вопросов · 15 минут · формат LMS', train: true, trainText: 'Как в 2022–2023 годах: вопросы по одному, на каждый своё время (30 секунд – 1,5 минуты)' },
+  prog2: { group: 'prog', title: 'Программирование', name: 'Контрольная работа №2', short: 'КР №2', min: 30,
+    desc: 'ООП в Java: принципы SOLID, переопределение и перегрузка методов, полиморфизм, вложенные классы, порядок инициализации, исключения, enum, record, интерфейсы.', meta: '20 вопросов · 30 минут · максимум 1.00 балла' },
   opd: { group: 'opd', title: 'ОПД', name: 'Рубежный контроль №1', short: 'РК №1', min: CFG.opdMinutes,
     desc: 'Задание 1: дерево каталогов, содержимое файлов и права доступа (в терминале).<br>Задание 2: перевод в 16-ю систему, сложение в 16-разрядном дополнительном коде, флаги C и V.', meta: '2 задания · ' + CFG.opdMinutes + ' минут' },
   opd2: { group: 'opd', title: 'ОПД', name: 'Рубежный контроль №2', short: 'РК №2', min: CFG.opd2Minutes,
@@ -409,7 +409,7 @@ function finish(timeout) {
   exam.finishedAt = Math.min(Date.now(), exam.startedAt + exam.dur); exam.timeout = !!timeout; save();
   let score;
   if (exam.course === 'prog') { const g = gradeProg(); score = g.score.toFixed(2) + ' / ' + g.max.toFixed(2); }
-  else if (exam.course === 'prog2') { const qs = getData(); score = fmtPts(qs.reduce((t, q, i) => t + KR2.grade(q, exam.answers[i]), 0)) + ' / ' + qs.length; }
+  else if (exam.course === 'prog2') { const qs = getData(); score = qs.reduce((t, q, i) => t + KR2.grade(q, exam.answers[i]) * q.pts, 0).toFixed(2) + ' / 1.00'; }
   else score = pct((exam.course === 'opd2' ? gradeOpd2() : gradeOpd()).total);
   const hist = store.get('krt.hist', []); hist.push({ course: exam.course, label: exam.label, score, when: exam.finishedAt, timeout: exam.timeout });
   store.set('krt.hist', hist.slice(-50));
@@ -441,16 +441,18 @@ function renderResult() {
           ${q.explain ? `<p class="explain">${esc(q.explain)}</p>` : ''}</li>`;
       }).join('') + '</ol></div>';
   } else if (exam.course === 'prog2') {
-    const qs = getData(), a = exam.answers, per = qs.map((q, i) => KR2.grade(q, a[i])), sum = per.reduce((t, x) => t + x, 0);
+    const qs = getData(), a = exam.answers, per = qs.map((q, i) => KR2.grade(q, a[i])), sum = per.reduce((t, x, i) => t + x * qs[i].pts, 0);
     const nOk = per.filter(x => x === 1).length, nPart = per.filter(x => x > 0 && x < 1).length;
-    html = resultHead(fmtPts(sum) + '<small> из ' + qs.length + '</small>', 'Верно: <b>' + nOk + '</b>, частично: <b>' + nPart + '</b>, неверно или без ответа: <b>' + (qs.length - nOk - nPart) + '</b> (' + pct(sum / qs.length) + ')') +
+    html = resultHead(sum.toFixed(2) + '<small> из 1.00</small>', 'Верно: <b>' + nOk + '</b>, частично: <b>' + nPart + '</b>, неверно или без ответа: <b>' + (qs.length - nOk - nPart) + '</b> (' + pct(sum) + ')') +
       '<div class="sheet"><ol class="qlist review">' + qs.map((q, i) => {
         const x = a[i], g = per[i];
+        const acc = q.accept || [q.answer];
         const body = q.type === 'text'
-          ? `<p>Ваш ответ: <code class="ua">${x ? esc(x) : '—'}</code></p><p>${q.accept.length > 1 ? 'Правильные ответы' : 'Правильный ответ'}: ${q.accept.map(t => '<code class="ra">' + esc(t) + '</code>').join(' или ')}</p>`
+          ? `<p>Ваш ответ: <code class="ua">${x ? esc(x) : '—'}</code></p><p>${acc.length > 1 ? 'Правильные ответы' : 'Правильный ответ'}: ${acc.map(t => '<code class="ra">' + esc(t) + '</code>').join(' или ')}</p>`
+          : q.type === 'single' ? '<ul class="olist">' + q.opts.map((o, j) => `<li class="${j === q.correctIdx ? 'right' : ''} ${x === j ? 'chosen' : ''}">${esc(o)}${x === j ? ' <span class="mk">ваш выбор</span>' : ''}</li>`).join('') + '</ul>'
           : '<ul class="olist">' + q.opts.map((o, j) => `<li class="${q.correct[j] ? 'right' : ''} ${(x || []).includes(j) ? 'chosen' : ''}">${esc(o)}${(x || []).includes(j) ? ' <span class="mk">отмечено</span>' : ''}</li>`).join('') + '</ul>';
         return `<li class="q ${g === 1 ? 'ok' : g > 0 ? 'part' : 'bad'}"><h3><span class="qn">${i + 1}.</span> ${esc(q.prompt)}</h3>
-          ${q.code ? `<pre class="code">${esc(q.code)}</pre>` : ''}<p class="pts got">Полученные баллы за вопрос ${fmtPts(g)}/1</p>${body}
+          ${q.code ? `<pre class="code">${esc(q.code)}</pre>` : ''}<p class="pts got">Полученные баллы за вопрос ${(g * q.pts).toFixed(2)}/${q.pts.toFixed(2)}</p>${body}
           <p class="explain">${esc(q.explain)}</p></li>`;
       }).join('') + '</ol></div>';
   } else if (exam.course === 'opd2') {
