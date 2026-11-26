@@ -22,7 +22,8 @@ const GROUPS = {
   opd: { title: 'ОПД', about: 'Основы профессиональной деятельности: рубежные контроли.', sems: [['opd', 'opd2'], ['opd3', 'opd4']] }
 };
 const QL = c => c === 'prog3' ? KR3 : KR2;
-const semWorks = g => GROUPS[g].sems.map(ws => ws.filter(w => COURSES[w]));
+const isHidden = w => typeof HIDDEN !== 'undefined' && HIDDEN.includes(w);
+const semWorks = g => GROUPS[g].sems.map(ws => ws.filter(w => COURSES[w] && !isHidden(w)));
 const COURSES = {
   prog: { group: 'prog', title: 'Программирование', name: 'Контрольная работа №1', short: 'КР №1', min: CFG.progMinutes,
     desc: 'Основы Java: ветвления, циклы, switch, строки, массивы, методы.', meta: '20 вопросов · ' + CFG.progMinutes + ' минут · максимум 1.00 балла' },
@@ -40,6 +41,7 @@ const COURSES = {
     desc: 'Задание 1: таблица трассировки программы БЭВМ (IP, CR, AR, DR, SP, BR, AC, NZVC после каждой команды).<br>Задание 2: восстановить формулу, которую вычисляет программа.', meta: '2 задания · ' + CFG.opd2Minutes + ' минут', train: true }
 };
 let exam = store.get('krt.exam', null);
+if (exam && (isHidden(exam.course) || !COURSES[exam.course])) exam = null;
 let data = null, dataKey = '', timerId = null, shell = null;
 
 function getData() {
