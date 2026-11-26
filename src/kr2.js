@@ -214,8 +214,9 @@ function build(seed) {
 function normCode(s) { return String(s || '').replace(/\s+/g, '').replace(/;+$/, '').toLowerCase(); }
 function grade(q, a) {
   if (q.type === 'text') return a != null && q.accept.some(x => normCode(x) === normCode(a)) ? 1 : 0;
-  const sel = Array.isArray(a) ? a : [];
-  return q.correct.every((c, i) => c === sel.includes(i)) ? 1 : 0;
+  const sel = Array.isArray(a) ? a : [], nT = q.correct.filter(Boolean).length;
+  const good = sel.filter(i => q.correct[i]).length, bad = sel.length - good;
+  return Math.max(0, (good - bad) / nT);
 }
 return { build, grade, mk, SOLID_T, IFACE, ABSTR, OVR, genOverride, genInner, genAbstract, genIface, normCode };
 })();

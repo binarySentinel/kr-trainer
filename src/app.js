@@ -24,8 +24,8 @@ const GROUPS = {
 const COURSES = {
   prog: { group: 'prog', title: 'Программирование', name: 'Контрольная работа №1', short: 'КР №1', min: CFG.progMinutes,
     desc: 'Основы Java: ветвления, циклы, switch, строки, массивы, методы.', meta: '20 вопросов · ' + CFG.progMinutes + ' минут · максимум 1.00 балла' },
-  prog2: { group: 'prog', title: 'Программирование', name: 'Контрольная работа №2', short: 'КР №2', min: 30,
-    desc: 'ООП в Java: принципы SOLID, переопределение методов, вложенные классы, исключения, enum, record, интерфейсы.<br>Как на рубежке: вопросы идут по одному, на каждый своё время (30 секунд – 1,5 минуты), вернуться назад нельзя.', meta: '10 вопросов · около 10 минут', train: true, trainText: 'Режим обучения: все вопросы сразу, без ограничения времени на вопрос' },
+  prog2: { group: 'prog', title: 'Программирование', name: 'Контрольная работа №2', short: 'КР №2', min: 15,
+    desc: 'ООП в Java: принципы SOLID, переопределение методов, вложенные классы, исключения, enum, record, интерфейсы.', meta: '10 вопросов · 15 минут · формат LMS', train: true, trainText: 'Как в 2022–2023 годах: вопросы по одному, на каждый своё время (30 секунд – 1,5 минуты)' },
   opd: { group: 'opd', title: 'ОПД', name: 'Рубежный контроль №1', short: 'РК №1', min: CFG.opdMinutes,
     desc: 'Задание 1: дерево каталогов, содержимое файлов и права доступа (в терминале).<br>Задание 2: перевод в 16-ю систему, сложение в 16-разрядном дополнительном коде, флаги C и V.', meta: '2 задания · ' + CFG.opdMinutes + ' минут' },
   opd2: { group: 'opd', title: 'ОПД', name: 'Рубежный контроль №2', short: 'РК №2', min: CFG.opd2Minutes,
@@ -42,6 +42,7 @@ function getData() {
 function save() { store.set('krt.exam', exam); }
 const fmtTime = ms => { const s = Math.max(0, Math.ceil(ms / 1000)); return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0'); };
 const pct = x => Math.round(x * 100) + '%';
+const fmtPts = x => (Math.round(x * 100) / 100).toString().replace('.', ',');
 const dateStr = t => new Date(t).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 
 /* ---------- модальное окно ---------- */
@@ -110,14 +111,14 @@ function goHome() { exam = null; store.del('krt.exam'); renderHome(); }
 
 function startExam(course, v, train) {
   const seed = v === 'r' ? (Math.floor(Math.random() * 4294967296) >>> 0) : GEN.hash(course + '-v' + v);
-  exam = { course, v, seed, train: !!train, label: (v === 'r' ? 'Случайный вариант ' + seed.toString(36).toUpperCase() : 'Вариант ' + v) + (train ? ' (обучение)' : ''), startedAt: Date.now(), dur: COURSES[course].min * 60000, answers: {}, term: [], sh: course === 'opd' ? SHELL.newState() : null };
-  if (course === 'prog2') {
+  exam = { course, v, seed, train: !!train, label: (v === 'r' ? 'Случайный вариант ' + seed.toString(36).toUpperCase() : 'Вариант ' + v) + (train ? (course === 'prog2' ? ' (слайды)' : ' (обучение)') : ''), startedAt: Date.now(), dur: COURSES[course].min * 60000, answers: {}, term: [], sh: course === 'opd' ? SHELL.newState() : null };
+  if (course === 'prog2' && train) {
     exam.qi = 0; exam.qStart = exam.startedAt;
-    exam.dur = train ? 30 * 60000 : KR2.build(seed).reduce((t, q) => t + q.secs, 0) * 1000;
+    exam.dur = KR2.build(seed).reduce((t, q) => t + q.secs, 0) * 1000;
   }
   save(); renderExam();
 }
-const slideMode = () => exam && exam.course === 'prog2' && !exam.train;
+const slideMode = () => exam && exam.course === 'prog2' && exam.train;
 
 /* ---------- таймер и шапка ---------- */
 function stopTimer() { if (timerId) clearInterval(timerId); timerId = null; }
@@ -167,7 +168,7 @@ function renderProg() {
     else inp = '<div class="opts">' + q.opts.map((o, j) => `<label class="opt"><input type="checkbox" data-q="${i}" value="${j}" ${(a[i] || []).includes(j) ? 'checked' : ''}><span>${esc(o)}</span></label>`).join('') + '</div>';
     return `<li class="q" id="q${i}"><h3><span class="qn">${i + 1}.</span> ${esc(q.prompt)}</h3>
       ${q.code ? `<pre class="code">${esc(q.code)}</pre>` : ''}${q.call ? `<p class="call">${esc(q.call)}</p>` : ''}
-      ${q.type === 'multi' ? '<details class="howto"><summary>Как оценивается?</summary><p>' + (exam.course === 'prog2' ? 'Отметьте все верные варианты. Вопрос засчитывается, только если отмечены все верные и ни одного лишнего.' : 'Балл = (верно отмеченные − неверно отмеченные) / число верных утверждений, но не меньше нуля.') + '</p></details>' : ''}
+      ${q.type === 'multi' ? '<details class="howto"><summary>Как оценивается?</summary><p>Балл = (верно отмеченные − неверно отмеченные) / число верных вариантов, но не меньше нуля.</p></details>' : ''}
       ${q.pts ? `<p class="pts">Баллы за вопрос: ${q.pts.toFixed(2)}</p>` : ''}${inp}</li>`;
   }).join('') + '</ol><div class="endrow"><button class="btn primary" id="finish2">Завершить попытку</button></div></div></section>';
   main.oninput = main.onchange = e => {
@@ -381,7 +382,7 @@ function renderExam() {
   main.onclick = main.onkeydown = null;
   if (exam.finishedAt) return renderResult();
   renderBar();
-  if (exam.course === 'prog' || (exam.course === 'prog2' && exam.train)) renderProg(); else if (exam.course === 'prog2') renderSlide(); else if (exam.course === 'opd2') renderOpd2(); else renderOpd();
+  if (exam.course === 'prog' || (exam.course === 'prog2' && !exam.train)) renderProg(); else if (exam.course === 'prog2') renderSlide(); else if (exam.course === 'opd2') renderOpd2(); else renderOpd();
   window.scrollTo(0, 0);
 }
 
@@ -408,7 +409,7 @@ function finish(timeout) {
   exam.finishedAt = Math.min(Date.now(), exam.startedAt + exam.dur); exam.timeout = !!timeout; save();
   let score;
   if (exam.course === 'prog') { const g = gradeProg(); score = g.score.toFixed(2) + ' / ' + g.max.toFixed(2); }
-  else if (exam.course === 'prog2') { const qs = getData(); score = qs.filter((q, i) => KR2.grade(q, exam.answers[i])).length + ' / ' + qs.length; }
+  else if (exam.course === 'prog2') { const qs = getData(); score = fmtPts(qs.reduce((t, q, i) => t + KR2.grade(q, exam.answers[i]), 0)) + ' / ' + qs.length; }
   else score = pct((exam.course === 'opd2' ? gradeOpd2() : gradeOpd()).total);
   const hist = store.get('krt.hist', []); hist.push({ course: exam.course, label: exam.label, score, when: exam.finishedAt, timeout: exam.timeout });
   store.set('krt.hist', hist.slice(-50));
@@ -440,15 +441,16 @@ function renderResult() {
           ${q.explain ? `<p class="explain">${esc(q.explain)}</p>` : ''}</li>`;
       }).join('') + '</ol></div>';
   } else if (exam.course === 'prog2') {
-    const qs = getData(), a = exam.answers, per = qs.map((q, i) => KR2.grade(q, a[i])), ok = per.filter(Boolean).length;
-    html = resultHead(ok + '<small> из ' + qs.length + '</small>', 'Верных ответов: <b>' + ok + '</b> из ' + qs.length + ' (' + pct(ok / qs.length) + ')') +
+    const qs = getData(), a = exam.answers, per = qs.map((q, i) => KR2.grade(q, a[i])), sum = per.reduce((t, x) => t + x, 0);
+    const nOk = per.filter(x => x === 1).length, nPart = per.filter(x => x > 0 && x < 1).length;
+    html = resultHead(fmtPts(sum) + '<small> из ' + qs.length + '</small>', 'Верно: <b>' + nOk + '</b>, частично: <b>' + nPart + '</b>, неверно или без ответа: <b>' + (qs.length - nOk - nPart) + '</b> (' + pct(sum / qs.length) + ')') +
       '<div class="sheet"><ol class="qlist review">' + qs.map((q, i) => {
         const x = a[i], g = per[i];
         const body = q.type === 'text'
           ? `<p>Ваш ответ: <code class="ua">${x ? esc(x) : '—'}</code></p><p>${q.accept.length > 1 ? 'Правильные ответы' : 'Правильный ответ'}: ${q.accept.map(t => '<code class="ra">' + esc(t) + '</code>').join(' или ')}</p>`
           : '<ul class="olist">' + q.opts.map((o, j) => `<li class="${q.correct[j] ? 'right' : ''} ${(x || []).includes(j) ? 'chosen' : ''}">${esc(o)}${(x || []).includes(j) ? ' <span class="mk">отмечено</span>' : ''}</li>`).join('') + '</ul>';
-        return `<li class="q ${g ? 'ok' : 'bad'}"><h3><span class="qn">${i + 1}.</span> ${esc(q.prompt)}</h3>
-          ${q.code ? `<pre class="code">${esc(q.code)}</pre>` : ''}<p class="pts got">${g ? 'Верно' : 'Неверно'} · ${g ? 1 : 0}/1</p>${body}
+        return `<li class="q ${g === 1 ? 'ok' : g > 0 ? 'part' : 'bad'}"><h3><span class="qn">${i + 1}.</span> ${esc(q.prompt)}</h3>
+          ${q.code ? `<pre class="code">${esc(q.code)}</pre>` : ''}<p class="pts got">Полученные баллы за вопрос ${fmtPts(g)}/1</p>${body}
           <p class="explain">${esc(q.explain)}</p></li>`;
       }).join('') + '</ol></div>';
   } else if (exam.course === 'opd2') {
