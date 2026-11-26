@@ -31,7 +31,7 @@ let bad = 0, cells = 0; const byOp = {};
 cases.forEach((c, i) => {
   const [regs, mem] = out[i].split('|'); const got = regs.split(';').filter(Boolean);
   const exp = c.exp ? c.exp.map(r => [r.IP,r.CR,r.AR,r.DR,r.SP,r.BR,r.AC,r.NZVC].join(' ')) : c.expS;
-  got.forEach((g, k) => { cells++; if (g !== exp[k]) { bad++; const op = c.prog ? c.prog[k].mn : 'gen'; byOp[op] = (byOp[op]||0)+1; if (bad < 8 && c.prog && ['OR','AND'].includes(c.prog[k].mn)) console.log(c.kind, 'row', k, c.prog ? c.prog[k].mn : '', '\n jar:', g, '\n js :', exp[k]); } });
+  got.forEach((g, k) => { cells++; if (g !== exp[k]) { bad++; const op = c.prog ? c.prog[k].mn : 'gen'; byOp[op] = (byOp[op]||0)+1; if (bad < 8) console.log(c.kind, 'row', k, c.prog ? c.prog[k].mn : '', '\n jar:', g, '\n js :', exp[k]); } });
   const fm = mem.split(',')[2]; if (fm !== c.final) { bad++; console.log('final mem mismatch', fm, c.final); }
 });
 console.log('programs', cases.length, 'rows', cells, 'mismatches', bad, byOp);

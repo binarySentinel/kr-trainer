@@ -80,20 +80,25 @@ function buildVariant(seed) {
     const forms = [];
     const add = (mn, arg) => { prog.push({ mn, arg }); forms.push(null); };
     const snap = () => { forms[forms.length - 1] = linStr(lin); };
-    const first = pick(['CLA+ADD', 'CLA+OR', 'CLA+ADD', 'LD', 'CLA+SUB']);
+    const first = pick(['CLA+ADD', 'CLA+OR', 'LD', 'LD', 'CLA+NOT+AND', 'CLA+NOT+AND', 'CLA+SUB']);
     const v1 = pick(['A', 'B']), addr = x => x === 'A' ? aA : aB;
     if (first === 'LD') { add('LD', addr(v1)); lin[v1.toLowerCase()] = 1; snap(); }
-    else {
+    else if (first === 'CLA+NOT+AND') {
+      add('CLA'); snap(); add('NOT'); lin.c = -1; snap();
+      add('AND', addr(v1)); lin = { a: 0, b: 0, c: 0 }; lin[v1.toLowerCase()] = 1; snap();
+    } else {
       add('CLA'); snap();
       const mn = first.split('+')[1];
       add(mn, addr(v1)); lin[v1.toLowerCase()] = mn === 'SUB' ? -1 : 1; snap();
     }
     const n = int(4, 7);
-    const pool = ['ADD A', 'ADD B', 'SUB A', 'SUB B', 'ASL', 'ASL', 'NOT', 'INC', 'DEC', 'NEG'];
+    const pool = ['ADD A', 'ADD B', 'SUB A', 'SUB B', 'ASL', 'ASL', 'CLC ROL', 'NOT', 'NOT INC', 'INC', 'DEC', 'NEG'];
     let prev = '';
     for (let i = 0; i < n; i++) {
-      let o; do { o = pick(pool); } while (o === prev && o !== 'ASL');
+      let o; do { o = pick(pool); } while ((o === prev && o !== 'ASL') || (o === 'INC' && prev === 'DEC') || (o === 'DEC' && prev === 'INC') || (o === 'NEG' && prev === 'NEG') || (o.startsWith('NOT') && prev.startsWith('NOT')));
       prev = o;
+      if (o === 'CLC ROL') { add('CLC'); snap(); add('ROL'); lin = { a: lin.a * 2, b: lin.b * 2, c: lin.c * 2 }; snap(); continue; }
+      if (o === 'NOT INC') { add('NOT'); lin = { a: -lin.a, b: -lin.b, c: -lin.c - 1 }; snap(); add('INC'); lin.c += 1; snap(); continue; }
       const [mn, v] = o.split(' ');
       if (v) { add(mn, addr(v)); lin[v.toLowerCase()] += mn === 'ADD' ? 1 : -1; snap(); }
       else {
@@ -148,7 +153,7 @@ function formulaOptions(lin, r) {
 }
 
 /* ---------- разбор строки ---------- */
-const NAMES = { CLA: 'очистка аккумулятора', NOT: 'инверсия аккумулятора', INC: 'инкремент', DEC: 'декремент', NEG: 'смена знака (дополнение)', ASL: 'арифметический сдвиг влево', ASR: 'арифметический сдвиг вправо', HLT: 'останов', ADD: 'сложение', SUB: 'вычитание', AND: 'логическое И', OR: 'логическое ИЛИ', LD: 'загрузка', ST: 'сохранение' };
+const NAMES = { CLC: 'сброс флага переноса', ROL: 'циклический сдвиг влево через C', CLA: 'очистка аккумулятора', NOT: 'инверсия аккумулятора', INC: 'инкремент', DEC: 'декремент', NEG: 'смена знака (дополнение)', ASL: 'арифметический сдвиг влево', ASR: 'арифметический сдвиг вправо', HLT: 'останов', ADD: 'сложение', SUB: 'вычитание', AND: 'логическое И', OR: 'логическое ИЛИ', LD: 'загрузка', ST: 'сохранение' };
 function explain(v, i) {
   const p = v.prog[i], r = v.rows[i], addr = hx(v.start + i, 3), prevAC = i === 0 ? '0000' : v.rows[i - 1].AC;
   const L = [];
@@ -164,7 +169,7 @@ function explain(v, i) {
     if (p.mn === 'OR') L.push('В БЭВМ-NG OR выполняется как ¬(¬AC & ¬M): промежуточное ¬AC & ¬M остаётся в BR, то есть BR = ¬результат = ' + r.BR + '.');
     else L.push('BR = адрес команды (' + r.BR + ').');
   }
-  const ops = { CLA: '0', NOT: '¬' + prevAC, INC: prevAC + ' + 1', DEC: prevAC + ' − 1', NEG: '−' + prevAC + ' (¬AC + 1)', ASL: prevAC + ' << 1', ASR: prevAC + ' >> 1',
+  const ops = { CLA: '0', NOT: '¬' + prevAC, INC: prevAC + ' + 1', DEC: prevAC + ' − 1', NEG: '−' + prevAC + ' (¬AC + 1)', ASL: prevAC + ' << 1', ROL: prevAC + ' << 1, в младший бит — C', CLC: prevAC + ' (не меняется)', ASR: prevAC + ' >> 1',
     ADD: prevAC + ' + ' + r.DR, SUB: prevAC + ' − ' + r.DR + ' (= ' + prevAC + ' + ¬' + r.DR + ' + 1)', OR: prevAC + ' | ' + r.DR, AND: prevAC + ' & ' + r.DR, LD: r.DR };
   if (ops[p.mn] != null) L.push('AC = ' + ops[p.mn] + ' = ' + r.AC + '.');
   const [N, Z, V, C] = r.NZVC.split('').map(Number);
@@ -175,7 +180,9 @@ function explain(v, i) {
     if (['ADD', 'SUB', 'INC', 'DEC', 'NEG'].includes(p.mn)) {
       why.push('V = ' + V + (V ? ' (переполнение знакового результата)' : ''));
       why.push('C = ' + C + (p.mn === 'SUB' ? ' (перенос при сложении с ¬M + 1; C = 1, если вычитание без заёма)' : p.mn === 'DEC' ? ' (DEC = AC + FFFF: перенос есть всегда, кроме AC = 0)' : C ? ' (перенос из 15-го разряда)' : ''));
-    } else if (['ASL', 'ASR'].includes(p.mn)) {
+    } else if (p.mn === 'CLC') {
+      why.length = 0; why.push('C = 0, остальные флаги не меняются');
+    } else if (['ASL', 'ASR', 'ROL'].includes(p.mn)) {
       why.push('C = ' + C + ' (выдвинутый бит)'); why.push('V = N ⊕ C = ' + V);
     } else if (['CLA', 'NOT', 'LD', 'OR', 'AND'].includes(p.mn)) {
       why.push('V = 0, C не меняется (' + C + ')');
