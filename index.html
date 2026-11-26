@@ -139,6 +139,9 @@ footer{margin-top:30px}
 .mini{font:12px Montserrat,Arial,sans-serif;border:0;background:none;color:var(--blue);cursor:pointer;padding:6px 8px;min-height:34px}
 .trace td.cok{color:var(--ok);padding:0 6px}.trace td.cbad{padding:2px 6px;line-height:1.2}.cbad s{display:block;color:var(--bad);font-size:12px}.cbad b{color:var(--ink);font-weight:600}
 .expl{padding-left:20px;font-size:14px;color:#4a4f57}.expl li{margin-bottom:8px}
+.slide{max-width:860px;margin:0 auto}.slide-top{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;flex-wrap:wrap}.slide-top h2{font-weight:500;font-size:19px;flex:1 1 320px}
+.slide-clock{display:grid;justify-items:end;gap:2px;font-size:13px}.slide-clock b{font:600 26px var(--mono);border:1px solid var(--line);border-radius:4px;padding:2px 10px}
+.exam .note{max-width:860px;margin:12px auto 0}
 @media(max-width:600px){.sheet,.res-head{padding:18px 16px}.top-note{display:none}.bar-title{flex-basis:100%;font-size:13px}.bar-title span{display:none}
  .code{font-size:14px}.copyrow{margin-top:8px}.spec .path{width:auto}}
 </style>
@@ -1179,6 +1182,229 @@ return { step, encode, buildVariant, explain, checkCell, normHex, normFlags, COL
 })();
 if (typeof module !== 'undefined') module.exports = BCOMP;
 
+/* Программирование, контрольная работа №2: ООП (SOLID, переопределение, вложенные классы, исключения, enum, record, интерфейсы) */
+var KR2 = (function () {
+'use strict';
+function mk(seed) {
+  let a = seed >>> 0;
+  const r = () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  const R = { r, int: (x, y) => x + Math.floor(r() * (y - x + 1)), pick: arr => arr[Math.floor(r() * arr.length)] };
+  R.shuffle = arr => { const b = arr.slice(); for (let i = b.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [b[i], b[j]] = [b[j], b[i]]; } return b; };
+  R.sample = (arr, n) => R.shuffle(arr).slice(0, n);
+  return R;
+}
+const L = a => a.join('\n');
+const SOLID = ['S', 'O', 'L', 'I', 'D'];
+
+/* ---------- 1–3. SOLID ---------- */
+const SOLID_T = {
+  I: R => {
+    const v = R.pick([['Animal', 'run', 'jump'], ['Worker', 'work', 'eat'], ['Printer', 'print', 'scan', 'fax'], ['Animal', 'swim', 'fly'], ['Device', 'call', 'takePhoto', 'playMusic'], ['Shape', 'area', 'volume']]);
+    return { code: L(['public interface ' + v[0] + ' {', '', ...v.slice(1).map(m => '    void ' + m + '();'), '', '}']), ans: ['I'],
+      why: 'Нарушен I (Interface Segregation): «толстый» интерфейс заставляет реализовывать методы, которые нужны не всем (' + v.slice(1).join(', ') + '). Его стоит разделить на несколько маленьких интерфейсов.' };
+  },
+  D: R => {
+    const v = R.pick([['Car', 'Wheel', 'wheels', true], ['UserService', 'MySqlDatabase', 'db'], ['Notifier', 'EmailSender', 'sender'], ['Lamp', 'PowerSwitch', 'powerSwitch'], ['Report', 'PdfPrinter', 'printer'], ['Robot', 'LithiumBattery', 'battery']]);
+    const code = v[3]
+      ? L(['public class Car {', '', '    private Wheel[] wheels;', '', '    public Car() {', '        this.wheels = new Wheel[]{ new Wheel() };', '    }', '}'])
+      : L(['public class ' + v[0] + ' {', '', '    private ' + v[1] + ' ' + v[2] + ';', '', '    public ' + v[0] + '() {', '        this.' + v[2] + ' = new ' + v[1] + '();', '    }', '}']);
+    return { code, ans: ['D'], deps: [v[1]],
+      why: 'Нарушен D (Dependency Inversion): класс сам создаёт конкретную зависимость (new ' + v[1] + ') и зависит от реализации, а не от абстракции. Зависимость лучше передавать извне через интерфейс.' };
+  },
+  SO: R => {
+    const v = R.pick([['Loser', 'age', 'luck'], ['Student', 'age', 'grade'], ['Account', 'id', 'balance'], ['Player', 'level', 'score'], ['Box', 'width', 'height']]);
+    return { code: L(['public class ' + v[0] + ' {', '', '    public int ' + v[1] + ';', '    public int ' + v[2] + ';', '', '}']), ans: ['S', 'O'],
+      why: 'На рубежке для класса с открытыми (public) полями принят ответ S и O: нет инкапсуляции — любой внешний код может менять состояние, поэтому класс нельзя расширять, не трогая код, который с этими полями работает.' };
+  },
+  S: R => {
+    const n = R.pick(['Report', 'Invoice', 'Order']);
+    return { code: L(['public class ' + n + ' {', '', '    public String generate() { ... }', '    public void print() { ... }', '    public void saveToFile(String path) { ... }', '    public void sendByEmail(String to) { ... }', '', '}']), ans: ['S'],
+      why: 'Нарушен S (Single Responsibility): у класса несколько причин для изменения — формирование данных, печать, сохранение в файл и отправка почтой. Эти обязанности нужно разнести по разным классам.' };
+  },
+  O: R => {
+    const v = R.pick([['AreaCalculator', 'area', 'Shape', [['Circle', 'Math.PI * c.r * c.r'], ['Square', 's.a * s.a']]], ['SoundPlayer', 'sound', 'Animal', [['Cat', '"Meow"'], ['Dog', '"Woof"']]]]);
+    const [cls, m, base, kinds] = v, ret = cls === 'AreaCalculator' ? 'double' : 'String';
+    const vars = ['c', 's'];
+    return { code: L(['public class ' + cls + ' {', '', '    public ' + ret + ' ' + m + '(' + base + ' x) {',
+      '        if (x instanceof ' + kinds[0][0] + ' ' + vars[0] + ') return ' + kinds[0][1] + ';',
+      '        if (x instanceof ' + kinds[1][0] + ' ' + vars[1] + ') return ' + kinds[1][1] + ';',
+      '        throw new IllegalArgumentException();', '    }', '}']), ans: ['O'],
+      why: 'Нарушен O (Open/Closed): чтобы поддержать новый подтип ' + base + ', придётся менять этот метод (добавлять ещё одну проверку instanceof). Правильнее сделать ' + m + '() методом самого ' + base + ' и переопределять его в подклассах.' };
+  },
+  L: R => {
+    const v = R.pick([['Bird', 'Penguin', 'fly'], ['Vehicle', 'Bicycle', 'refuel'], ['Account', 'FixedDeposit', 'withdraw']]);
+    return { code: L(['public class ' + v[1] + ' extends ' + v[0] + ' {', '', '    @Override', '    public void ' + v[2] + '() {', '        throw new UnsupportedOperationException();', '    }', '', '}']), ans: ['L'],
+      why: 'Нарушен L (Liskov Substitution): ' + v[1] + ' нельзя использовать везде, где ожидается ' + v[0] + ' — вызов ' + v[2] + '() вместо работы бросает исключение, то есть подкласс ломает поведение базового класса.' };
+  }
+};
+
+/* ---------- 4. Переопределённые методы ---------- */
+const OVR = {
+  hashCode: { lines: ['@Override', 'public int hashCode()', '{ return super.hashCode(); }'], ov: 'hashCode' },
+  hashCodeNoAnn: { lines: ['public int hashCode()', '{ return 42; }'], ov: 'hashCode' },
+  toString: { lines: ['public String toString()', '{ return "MyClass {}"; }'], ov: 'toString' },
+  toStringAnn: { lines: ['@Override', 'public String toString()', '{ return "MyClass {}"; }'], ov: 'toString' },
+  clone: { lines: ['@Override', 'protected Object clone() { return null; }'], ov: 'clone' },
+  equalsObj: { lines: ['public boolean equals(Object o)', '{ return this == o; }'], ov: 'equals' },
+  equalsOverload: { lines: ['public boolean equals(MyClass o)', '{ return this == o; }'], ov: null, trap: 'equals(MyClass) — это перегрузка, а не переопределение: у Object метод equals(Object).' },
+  hashcodeLower: { lines: ['public int hashcode()', '{ return 1; }'], ov: null, trap: 'hashcode() со строчной c — новый метод, а не переопределение hashCode().' },
+  tostringLower: { lines: ['public String tostring()', '{ return ""; }'], ov: null, trap: 'tostring() со строчной s — новый метод, а не переопределение toString().' },
+  save: { lines: ['public void save() { }'], ov: null }
+};
+function genOverride(R) {
+  for (;;) {
+    const picks = R.sample(Object.keys(OVR), R.int(3, 4));
+    const ovs = picks.map(k => OVR[k].ov).filter(Boolean);
+    if (new Set(ovs).size !== ovs.length) continue; // один и тот же метод дважды
+    if (picks.includes('equalsObj') && picks.includes('equalsOverload')) continue;
+    if (picks.includes('hashCode') && picks.includes('hashCodeNoAnn')) continue;
+    const body = [];
+    picks.forEach((k, i) => { if (i) body.push(''); OVR[k].lines.forEach(l => body.push('    ' + l)); });
+    const opts = ['equals', 'hashCode', 'toString', 'clone', 'save', 'asString'];
+    const traps = picks.map(k => OVR[k].trap).filter(Boolean);
+    return { prompt: 'Укажите все переопределённые методы', code: L(['public class MyClass {', ...body, '}']), opts, correct: opts.map(o => ovs.includes(o)),
+      explain: 'Переопределены методы класса Object: ' + (ovs.length ? ovs.join(', ') : 'нет') + '. Аннотация @Override не обязательна — toString() без неё всё равно переопределяет метод Object. ' + traps.join(' '), secs: 60, javac: { cls: 'MyClass', src: L(['public class MyClass {', ...body, '}']) } };
+  }
+}
+
+/* ---------- 5. Вызов метода внешнего класса ---------- */
+function genInner(R) {
+  const [O, I, m, im] = R.pick([['Animal', 'Head', 'doIt', 'think'], ['Car', 'Engine', 'honk', 'start'], ['House', 'Door', 'lightOn', 'open'], ['Robot', 'Arm', 'beep', 'move'], ['Phone', 'Screen', 'ring', 'show']]);
+  const kind = R.pick(['inner', 'inner', 'static', 'staticMethod', 'clash']);
+  const outerM = kind === 'staticMethod' ? '    static void ' + m + '() {}' : '    void ' + m + '() {}';
+  const inner = [kind === 'static' ? '    public static class ' + I + ' {' : '    public class ' + I + ' {'];
+  if (kind === 'clash') inner.push('        void ' + m + '() {}', '');
+  inner.push('        public void ' + im + '() {', '            //', '            // code here', '            //', '        }', '    }');
+  const code = L(['public class ' + O + ' {', '', outerM, '', ...inner, '}']);
+  let acc, ex;
+  if (kind === 'inner') { acc = [m + '();', O + '.this.' + m + '();']; ex = I + ' — внутренний (не static) класс, у его объекта есть ссылка на внешний объект. Можно написать просто ' + m + '(); или явно ' + O + '.this.' + m + '();'; }
+  else if (kind === 'clash') { acc = [O + '.this.' + m + '();']; ex = 'В ' + I + ' есть свой метод ' + m + '(), поэтому просто ' + m + '(); вызовет его. Метод внешнего класса вызывается через ' + O + '.this.' + m + '();'; }
+  else if (kind === 'static') { acc = ['new ' + O + '().' + m + '();']; ex = I + ' — статический вложенный класс, ссылки на внешний объект у него нет (' + O + '.this не скомпилируется). Нужен объект: new ' + O + '().' + m + '();'; }
+  else { acc = [m + '();', O + '.' + m + '();']; ex = 'Метод ' + m + '() статический, его можно вызвать по имени: ' + m + '(); или ' + O + '.' + m + '();'; }
+  return { type: 'text', prompt: 'Замените комментарий на строку кода, которая вызывает метод ' + m + ' класса ' + O + '.', code, accept: acc, answer: acc[0], explain: ex, secs: 90,
+    javac: { cls: O, src: code, slot: '            // code here', accept: acc } };
+}
+
+/* ---------- 6. Максимально абстрактный тип X ---------- */
+const ABSTR = [
+  { code: ['class Thrower {', '', '    public static void go(X x) throws X {', '        throw x;', '    }', '', '}'], ans: ['Throwable'], ex: 'Бросать (throw) и объявлять в throws можно любой подтип Throwable, а Throwable — самый общий из них.' },
+  { code: ['class Closer {', '', '    public static void go(X x) throws Exception {', '        try (x) {', '        }', '    }', '', '}'], ans: ['AutoCloseable'], ex: 'В try-with-resources может стоять только объект, реализующий AutoCloseable (Closeable — его более узкий подтип).' },
+  { code: ['class Walker {', '', '    public static void go(X x) {', '        for (Object o : x) {', '        }', '    }', '', '}'], ans: ['Iterable', 'Iterable<?>', 'Iterable<Object>', 'Iterable<? extends Object>'], ex: 'Цикл for-each работает с массивами и объектами Iterable; самый абстрактный тип — Iterable (коллекции — его подтипы).' },
+  { code: ['class Printer {', '', '    public static String go(X x) {', '        return x.toString();', '    }', '', '}'], ans: ['Object'], ex: 'toString() объявлен в Object, поэтому подходит любой объект.' },
+  { code: ['class Counter {', '', '    public static int go(X x) {', '        return x.length();', '    }', '', '}'], ans: ['CharSequence'], ex: 'Метод length() объявлен в интерфейсе CharSequence (его реализуют String, StringBuilder и др.).' },
+  { code: ['class Starter {', '', '    public static void go(X x) {', '        new Thread(x).start();', '    }', '', '}'], ans: ['Runnable'], ex: 'Конструктор Thread принимает Runnable.' },
+  { code: ['class Closer2 {', '', '    public static void go(X x) throws Exception {', '        x.close();', '    }', '', '}'], ans: ['AutoCloseable'], ex: 'close() с throws Exception объявлен в AutoCloseable — самом общем интерфейсе с этим методом.' }
+];
+function genAbstract(R) {
+  const t = R.pick(ABSTR);
+  return { type: 'text', prompt: 'Укажите максимально абстрактный допустимый тип данных X, при котором этот код скомпилируется', code: L(t.code), accept: t.ans, answer: t.ans[0], explain: t.ex, secs: 60,
+    javac: { cls: t.code[0].split(' ')[1], src: L(t.code), x: t.ans } };
+}
+
+/* ---------- 7. Свойства исключений ---------- */
+const EXC = [
+  { q: 'Укажите все свойства проверяемых исключений (checked)', items: [
+    [false, 'Блок finally обязательный'], [true, 'Генерируются компилятором'], [false, 'Генерируются JVM'], [false, 'Без try-catch не скомпилируется'],
+    [true, 'try-catch или throws обязательны'], [true, 'Наследуются от Throwable'], [false, 'Наследуются от Error'], [false, 'Не могут иметь конструктора по умолчанию'], [false, 'Не содержат в себе стек вызовов']],
+    ex: 'Проверяемые исключения наследуются от Exception (а значит, и от Throwable), но не от RuntimeException. Компилятор требует их обработать: try-catch или throws — что-то одно, поэтому «без try-catch не скомпилируется» неверно (хватит throws). На рубежке принят вариант «генерируются компилятором» — точнее, они проверяются компилятором. Стек вызовов есть у любого исключения, finally не обязателен.' },
+  { q: 'Укажите все свойства непроверяемых исключений (unchecked)', items: [
+    [true, 'Наследуются от RuntimeException или Error'], [true, 'Компилятор не требует их обрабатывать'], [false, 'try-catch или throws обязательны'], [true, 'Их можно перехватить в catch'],
+    [true, 'Наследуются от Throwable'], [false, 'Не содержат в себе стек вызовов'], [false, 'Наследуются только от Exception напрямую'], [false, 'Блок finally обязательный']],
+    ex: 'Непроверяемые — это RuntimeException, Error и их подклассы. Компилятор не заставляет их обрабатывать, но поймать в catch их можно. Как и все исключения, они наследуются от Throwable и содержат стек вызовов.' },
+  { q: 'Укажите все верные утверждения об Error', items: [
+    [true, 'Наследуется от Throwable'], [false, 'Наследуется от Exception'], [true, 'Обозначает серьёзные проблемы, например OutOfMemoryError'], [false, 'Обязательно указывать в throws'],
+    [true, 'Является непроверяемым'], [false, 'Не может быть перехвачен в catch']],
+    ex: 'Error — непроверяемый, прямой наследник Throwable (не Exception). Обычно его не обрабатывают, но синтаксически catch (Error e) допустим.' }
+];
+function genExc(R) {
+  const t = R.pick([EXC[0], EXC[0], EXC[1], EXC[2]]);
+  const it = R.shuffle(t.items);
+  return { prompt: t.q, opts: it.map(x => x[1]), correct: it.map(x => x[0]), explain: t.ex, secs: 60 };
+}
+
+/* ---------- 8. enum ---------- */
+function genEnum(R) {
+  if (R.r() < 0.65) {
+    const pool = [[true, 'name()'], [true, 'ordinal()'], [true, 'values()'], [true, 'valueOf(String)'], [false, 'toString()'], [false, 'hashCode()'], [false, 'equals(Object)'],
+      [false, 'applySelfEffect(...)'], [false, 'order()'], [false, 'size()'], [false, 'getName()'], [false, 'sayPhrase(...)'], [false, 'завалитьРубежку()']];
+    const tr = R.sample(pool.filter(x => x[0]), R.int(2, 3)), fl = R.sample(pool.filter(x => !x[0]), 7 - tr.length), it = R.shuffle(tr.concat(fl));
+    return { prompt: 'Укажите методы enum (определённые ТОЛЬКО в enum)', opts: it.map(x => x[1]), correct: it.map(x => x[0]), secs: 60,
+      explain: 'Только у перечислений есть name(), ordinal() (из класса Enum) и статические values(), valueOf(String), которые создаёт компилятор. toString(), hashCode(), equals() есть у любого объекта (Object).' };
+  }
+  const pool = [[true, 'name()'], [true, 'ordinal()'], [true, 'toString()'], [true, 'hashCode()'], [true, 'values()'], [true, 'compareTo(...)'],
+    [false, 'order()'], [false, 'getName()'], [false, 'index()'], [false, 'applySelfEffect(...)'], [false, 'sayPhrase(...)'], [false, 'setOrdinal(int)']];
+  const tr = R.sample(pool.filter(x => x[0]), R.int(3, 4)), fl = R.sample(pool.filter(x => !x[0]), 7 - tr.length), it = R.shuffle(tr.concat(fl));
+  return { prompt: 'Укажите методы, которые есть у любого enum без объявления', opts: it.map(x => x[1]), correct: it.map(x => x[0]), secs: 60,
+    explain: 'Любое перечисление наследует java.lang.Enum: name(), ordinal(), compareTo(), а также методы Object (toString(), hashCode()); компилятор добавляет values() и valueOf(String). Изменить ordinal нельзя.' };
+}
+
+/* ---------- 9. record ---------- */
+function genRecord(R) {
+  const pool = [[true, 'От record нельзя наследоваться'], [true, 'Не может содержать полей, кроме указанных в конструкторе'], [true, 'Может реализовывать интерфейсы'],
+    [true, 'Автоматически генерирует equals(), hashCode() и toString()'], [true, 'Поля-компоненты неизменяемые (final)'], [true, 'Может содержать статические поля и методы'],
+    [false, 'Может наследоваться от других классов'], [false, 'Не может реализовывать интерфейсы'], [false, 'Для компонентов создаются сеттеры'],
+    [false, 'Методы доступа называются getX()'], [false, 'Может быть объявлен abstract']];
+  const classic = R.r() < 0.35;
+  let it;
+  if (classic) it = [pool[6], pool[1], pool[7], pool[0]];
+  else { const tr = R.sample(pool.filter(x => x[0]), R.int(2, 3)), fl = R.sample(pool.filter(x => !x[0]), 5 - tr.length); it = R.shuffle(tr.concat(fl)); }
+  return { prompt: 'Укажите все свойства рекордов (record)', opts: it.map(x => x[1]), correct: it.map(x => x[0]), secs: 60,
+    explain: 'record — неявно final класс, наследник java.lang.Record: от него нельзя наследоваться и сам он не может extends другой класс, но может реализовывать интерфейсы. Поля экземпляра — только компоненты (private final), статические поля разрешены. Методы доступа называются как компоненты: x(), а не getX(); сеттеров нет.' };
+}
+
+/* ---------- 10. Ошибки в интерфейсе ---------- */
+const IFACE = [
+  { code: ['interface Runnable {', '    public void run() {', '        System.out.println("not implemented yet");', '    }', '}'],
+    opts: [[false, 'public interface => private interface'], [false, 'interface => default interface'], [false, 'interface => functional interface'], [true, 'public void => default void'], [false, 'нет ошибок']],
+    fixed: ['interface Runnable {', '    default void run() {', '        System.out.println("not implemented yet");', '    }', '}'],
+    ex: 'Обычный метод интерфейса не может иметь тела. Метод с реализацией по умолчанию объявляется со словом default.' },
+  { code: ['interface Shape {', '    double PI;', '    double area();', '}'],
+    opts: [[true, 'double PI; => double PI = 3.14;'], [false, 'double area(); => default double area();'], [false, 'interface => abstract interface'], [false, 'нет ошибок']],
+    fixed: ['interface Shape {', '    double PI = 3.14;', '    double area();', '}'],
+    ex: 'Поля интерфейса — это public static final константы, их обязательно инициализировать.' },
+  { code: ['interface Greeter {', '    protected void hello();', '}'],
+    opts: [[true, 'protected void => void'], [false, 'protected void => private void'], [false, 'interface => functional interface'], [false, 'нет ошибок']],
+    fixed: ['interface Greeter {', '    void hello();', '}'],
+    ex: 'Методы интерфейса не могут быть protected: абстрактные методы неявно public. private тоже не подойдёт — приватный метод интерфейса обязан иметь тело.' },
+  { code: ['interface Greeter {', '    private void hello();', '}'],
+    opts: [[true, 'private void hello(); => private void hello() { }'], [false, 'private => protected'], [false, 'interface => functional interface'], [false, 'нет ошибок']],
+    fixed: ['interface Greeter {', '    private void hello() { }', '}'],
+    ex: 'Приватные методы интерфейса (Java 9+) обязаны иметь тело — это вспомогательные методы для default-методов.' },
+  { code: ['interface Greeter {', '    void greet();', '    default void bye() { System.out.println("bye"); }', '    static Greeter of() { return () -> {}; }', '}'],
+    opts: [[false, 'default void => void'], [false, 'static Greeter => default Greeter'], [false, 'interface => functional interface'], [true, 'нет ошибок']], fixed: null,
+    ex: 'Ошибок нет: абстрактный метод, default-метод с телом и статический метод с телом — всё допустимо.' }
+];
+function genIface(R) {
+  const t = R.pick([IFACE[0], IFACE[0], IFACE[1], IFACE[2], IFACE[3], IFACE[4]]);
+  const keepLast = t.opts[t.opts.length - 1][1] === 'нет ошибок';
+  const it = keepLast ? R.shuffle(t.opts.slice(0, -1)).concat([t.opts[t.opts.length - 1]]) : R.shuffle(t.opts);
+  return { prompt: 'Укажите все ошибки в коде (что нужно исправить, чтобы код скомпилировался)', code: L(t.code), opts: it.map(x => x[1]), correct: it.map(x => x[0]), explain: t.ex, secs: 60,
+    javac: { cls: t.code[0].split(' ')[1], broken: t.fixed ? L(t.code) : null, ok: L(t.fixed || t.code) } };
+}
+
+/* ---------- сборка варианта ---------- */
+function solidQ(R, key) {
+  const t = SOLID_T[key](R);
+  return { prompt: 'Какие из SOLID принципов нарушены в коде?', code: t.code, opts: SOLID.slice(), correct: SOLID.map(s => t.ans.includes(s)), explain: t.why,
+    secs: key === 'I' || key === 'SO' ? 30 : 60, solidKey: key, deps: t.deps };
+}
+function build(seed) {
+  const R = mk(seed);
+  const keys = R.sample(['I', 'D', 'SO', 'I', 'D', 'SO', 'S', 'O', 'L'], 9);
+  const sol = []; for (const k of keys) { if (!sol.includes(k)) sol.push(k); if (sol.length === 3) break; }
+  const qs = sol.map(k => solidQ(R, k)).concat([genOverride(R), genInner(R), genAbstract(R), genExc(R), genEnum(R), genRecord(R), genIface(R)]);
+  return qs.map(q => Object.assign({ type: q.type || 'multi' }, q));
+}
+function normCode(s) { return String(s || '').replace(/\s+/g, '').replace(/;+$/, '').toLowerCase(); }
+function grade(q, a) {
+  if (q.type === 'text') return a != null && q.accept.some(x => normCode(x) === normCode(a)) ? 1 : 0;
+  const sel = Array.isArray(a) ? a : [];
+  return q.correct.every((c, i) => c === sel.includes(i)) ? 1 : 0;
+}
+return { build, grade, mk, SOLID_T, IFACE, ABSTR, OVR, genOverride, genInner, genAbstract, genIface, normCode };
+})();
+if (typeof module !== 'undefined') module.exports = KR2;
+
 {
 /* ===== Настройки сайта: меняйте здесь ===== */
 const CFG = {
@@ -1199,12 +1425,14 @@ const store = {
   del(k) { try { localStorage.removeItem(k); } catch (e) { } }
 };
 const GROUPS = {
-  prog: { title: 'Программирование', about: 'Контрольные работы по Java.', works: ['prog'] },
+  prog: { title: 'Программирование', about: 'Контрольные работы по Java.', works: ['prog', 'prog2'] },
   opd: { title: 'ОПД', about: 'Основы профессиональной деятельности: рубежные контроли.', works: ['opd', 'opd2'] }
 };
 const COURSES = {
   prog: { group: 'prog', title: 'Программирование', name: 'Контрольная работа №1', short: 'КР №1', min: CFG.progMinutes,
     desc: 'Основы Java: ветвления, циклы, switch, строки, массивы, методы.', meta: '20 вопросов · ' + CFG.progMinutes + ' минут · максимум 1.00 балла' },
+  prog2: { group: 'prog', title: 'Программирование', name: 'Контрольная работа №2', short: 'КР №2', min: 30,
+    desc: 'ООП в Java: принципы SOLID, переопределение методов, вложенные классы, исключения, enum, record, интерфейсы.<br>Как на рубежке: вопросы идут по одному, на каждый своё время (30 секунд – 1,5 минуты), вернуться назад нельзя.', meta: '10 вопросов · около 10 минут', train: true, trainText: 'Режим обучения: все вопросы сразу, без ограничения времени на вопрос' },
   opd: { group: 'opd', title: 'ОПД', name: 'Рубежный контроль №1', short: 'РК №1', min: CFG.opdMinutes,
     desc: 'Задание 1: дерево каталогов, содержимое файлов и права доступа (в терминале).<br>Задание 2: перевод в 16-ю систему, сложение в 16-разрядном дополнительном коде, флаги C и V.', meta: '2 задания · ' + CFG.opdMinutes + ' минут' },
   opd2: { group: 'opd', title: 'ОПД', name: 'Рубежный контроль №2', short: 'РК №2', min: CFG.opd2Minutes,
@@ -1215,7 +1443,7 @@ let data = null, dataKey = '', timerId = null, shell = null;
 
 function getData() {
   const key = exam.course + ':' + exam.seed;
-  if (key !== dataKey) { data = exam.course === 'prog' ? GEN.buildProg(exam.seed) : exam.course === 'opd2' ? BCOMP.buildVariant(exam.seed) : GEN.buildOpd(exam.seed); dataKey = key; }
+  if (key !== dataKey) { data = exam.course === 'prog' ? GEN.buildProg(exam.seed) : exam.course === 'prog2' ? KR2.build(exam.seed) : exam.course === 'opd2' ? BCOMP.buildVariant(exam.seed) : GEN.buildOpd(exam.seed); dataKey = key; }
   return data;
 }
 function save() { store.set('krt.exam', exam); }
@@ -1274,7 +1502,7 @@ function renderGroup(g) {
     <h1>${esc(G.title)}</h1>
     ${G.works.map(w => { const C = COURSES[w]; return `<div class="course">
       <div class="c-info"><h2>${esc(C.name)}</h2><p>${C.desc}</p><p class="meta">${esc(C.meta)}</p>
-      ${C.train ? `<label class="chk"><input type="checkbox" id="tr-${w}"> Режим обучения: проверка и подсказка по каждой строке во время решения</label>` : ''}</div>
+      ${C.train ? `<label class="chk"><input type="checkbox" id="tr-${w}"> ${C.trainText || 'Режим обучения: проверка и подсказка по каждой строке во время решения'}</label>` : ''}</div>
       <div class="c-start"><label class="sr" for="v-${w}">Вариант</label><select id="v-${w}">${varOpts()}</select><button class="btn primary" data-start="${w}">Начать попытку</button></div>
     </div>`; }).join('')}
   </section>` + histTable();
@@ -1290,12 +1518,26 @@ function goHome() { exam = null; store.del('krt.exam'); renderHome(); }
 function startExam(course, v, train) {
   const seed = v === 'r' ? (Math.floor(Math.random() * 4294967296) >>> 0) : GEN.hash(course + '-v' + v);
   exam = { course, v, seed, train: !!train, label: (v === 'r' ? 'Случайный вариант ' + seed.toString(36).toUpperCase() : 'Вариант ' + v) + (train ? ' (обучение)' : ''), startedAt: Date.now(), dur: COURSES[course].min * 60000, answers: {}, term: [], sh: course === 'opd' ? SHELL.newState() : null };
+  if (course === 'prog2') {
+    exam.qi = 0; exam.qStart = exam.startedAt;
+    exam.dur = train ? 30 * 60000 : KR2.build(seed).reduce((t, q) => t + q.secs, 0) * 1000;
+  }
   save(); renderExam();
 }
+const slideMode = () => exam && exam.course === 'prog2' && !exam.train;
 
 /* ---------- таймер и шапка ---------- */
 function stopTimer() { if (timerId) clearInterval(timerId); timerId = null; }
 function tick() {
+  if (slideMode()) {
+    const qs = getData(); let moved = false;
+    while (exam.qi < qs.length && Date.now() >= exam.qStart + qs[exam.qi].secs * 1000) { exam.qStart += qs[exam.qi].secs * 1000; exam.qi++; moved = true; }
+    if (moved) { save(); if (exam.qi >= qs.length) return finish(false); renderSlide(); }
+    const ql = exam.qStart + qs[exam.qi].secs * 1000 - Date.now(), t = document.getElementById('timer');
+    if (t) { t.textContent = fmtTime(ql); t.classList.toggle('warn', ql < 10000); }
+    const st = document.getElementById('slideTime'); if (st) st.textContent = fmtTime(ql);
+    return;
+  }
   const left = exam.startedAt + exam.dur - Date.now();
   const t = document.getElementById('timer');
   if (t) { t.textContent = fmtTime(left); t.classList.toggle('warn', left < 5 * 60000); }
@@ -1304,7 +1546,7 @@ function tick() {
 function renderBar() {
   bar.hidden = false; document.body.className = 'in-exam mode-' + exam.course;
   bar.innerHTML = `<div class="bar-in"><div class="bar-title">${esc(COURSES[exam.course].title)}. ${esc(COURSES[exam.course].name)}<span class="muted">${esc(exam.label)}</span></div>
-    <div class="bar-time">Осталось <b class="timer" id="timer">--:--</b></div>
+    <div class="bar-time">${slideMode() ? 'На вопрос' : 'Осталось'} <b class="timer" id="timer">--:--</b></div>
     <div class="bar-prog" id="progress"></div>
     <button class="btn finish" id="finishBtn">Завершить</button><button class="link" id="quitBtn">Прервать попытку</button></div>`;
   document.getElementById('finishBtn').onclick = confirmFinish;
@@ -1317,7 +1559,7 @@ function confirmFinish() {
 }
 function unanswered() {
   const a = exam.answers;
-  if (exam.course === 'prog') return getData().filter((q, i) => { const x = a[i]; return x == null || x === '' || (Array.isArray(x) && !x.length); }).length;
+  if (exam.course === 'prog' || exam.course === 'prog2') return getData().filter((q, i) => { const x = a[i]; return x == null || x === '' || (Array.isArray(x) && !x.length); }).length;
   if (exam.course === 'opd2') { const v = getData(); let n = a.f == null ? 1 : 0; v.rows.forEach((r, i) => BCOMP.COLS.forEach(c => { const x = (a.t || {})[i + c]; if (x == null || x === '') n++; })); return n; }
   return ['a', 'b', 's', 'C', 'V'].filter(k => a[k] == null || a[k] === '').length;
 }
@@ -1327,13 +1569,13 @@ function renderProg() {
   const qs = getData(), a = exam.answers;
   main.innerHTML = '<section class="band exam"><div class="sheet"><ol class="qlist">' + qs.map((q, i) => {
     let inp = '';
-    if (q.type === 'text') inp = `<input class="ans" data-q="${i}" value="${esc(a[i] || '')}" placeholder="Введите строку" autocomplete="off" spellcheck="false" aria-label="Ответ на вопрос ${i + 1}">`;
+    if (q.type === 'text') inp = `<input class="ans" data-q="${i}" value="${esc(a[i] || '')}" placeholder="${exam.course === 'prog2' ? 'Мой ответ' : 'Введите строку'}" autocomplete="off" spellcheck="false" aria-label="Ответ на вопрос ${i + 1}">`;
     else if (q.type === 'single') inp = '<div class="opts">' + q.opts.map((o, j) => `<label class="opt"><input type="radio" name="q${i}" data-q="${i}" value="${j}" ${a[i] === j ? 'checked' : ''}><span>${esc(o)}</span></label>`).join('') + '</div>';
     else inp = '<div class="opts">' + q.opts.map((o, j) => `<label class="opt"><input type="checkbox" data-q="${i}" value="${j}" ${(a[i] || []).includes(j) ? 'checked' : ''}><span>${esc(o)}</span></label>`).join('') + '</div>';
     return `<li class="q" id="q${i}"><h3><span class="qn">${i + 1}.</span> ${esc(q.prompt)}</h3>
       ${q.code ? `<pre class="code">${esc(q.code)}</pre>` : ''}${q.call ? `<p class="call">${esc(q.call)}</p>` : ''}
-      ${q.type === 'multi' ? '<details class="howto"><summary>Как оценивается?</summary><p>Балл = (верно отмеченные − неверно отмеченные) / число верных утверждений, но не меньше нуля.</p></details>' : ''}
-      <p class="pts">Баллы за вопрос: ${q.pts.toFixed(2)}</p>${inp}</li>`;
+      ${q.type === 'multi' ? '<details class="howto"><summary>Как оценивается?</summary><p>' + (exam.course === 'prog2' ? 'Отметьте все верные варианты. Вопрос засчитывается, только если отмечены все верные и ни одного лишнего.' : 'Балл = (верно отмеченные − неверно отмеченные) / число верных утверждений, но не меньше нуля.') + '</p></details>' : ''}
+      ${q.pts ? `<p class="pts">Баллы за вопрос: ${q.pts.toFixed(2)}</p>` : ''}${inp}</li>`;
   }).join('') + '</ol><div class="endrow"><button class="btn primary" id="finish2">Завершить попытку</button></div></div></section>';
   main.oninput = main.onchange = e => {
     const el = e.target; if (!el.dataset || el.dataset.q == null) return;
@@ -1348,8 +1590,36 @@ function renderProg() {
 }
 function updProgress() {
   const p = document.getElementById('progress'); if (!p) return;
-  const total = exam.course === 'prog' ? getData().length : exam.course === 'opd2' ? getData().rows.length * 8 + 1 : 5, done = total - unanswered();
+  const total = exam.course === 'prog' || exam.course === 'prog2' ? getData().length : exam.course === 'opd2' ? getData().rows.length * 8 + 1 : 5, done = total - unanswered();
   p.textContent = (exam.course === 'opd2' ? 'Заполнено ' : 'Отвечено ') + done + ' из ' + total;
+}
+
+/* ---------- экзамен: программирование КР2 (по одному вопросу) ---------- */
+function renderSlide() {
+  const qs = getData(), i = exam.qi, q = qs[i], a = exam.answers, last = i === qs.length - 1;
+  let inp;
+  if (q.type === 'text') inp = `<input class="ans" data-q="${i}" value="${esc(a[i] || '')}" placeholder="Мой ответ" autocomplete="off" spellcheck="false" aria-label="Ответ">`;
+  else inp = '<div class="opts">' + q.opts.map((o, j) => `<label class="opt"><input type="checkbox" data-q="${i}" value="${j}" ${(a[i] || []).includes(j) ? 'checked' : ''}><span>${esc(o)}</span></label>`).join('') + '</div>';
+  main.innerHTML = `<section class="band exam"><div class="sheet slide">
+    <div class="slide-top"><h2><span class="qn">${i + 1}.</span> ${esc(q.prompt)}</h2><div class="slide-clock"><span class="muted">Вопрос ${i + 1} из ${qs.length}</span><b id="slideTime">--:--</b></div></div>
+    ${q.code ? `<pre class="code">${esc(q.code)}</pre>` : ''}
+    ${q.type === 'multi' ? '<p class="pts">Отметьте все подходящие варианты</p>' : '<p class="pts">Введите ответ</p>'}
+    ${inp}
+    <div class="endrow"><button class="btn primary" id="nextQ">${last ? 'Завершить' : 'Следующий вопрос'}</button></div>
+  </div><p class="note">Как на рубежке: на каждый вопрос своё время, по его окончании вопрос сменится сам. Вернуться к прошлому вопросу нельзя.</p></section>`;
+  main.oninput = main.onchange = e => {
+    const el = e.target; if (!el.dataset || el.dataset.q == null) return;
+    const k = +el.dataset.q;
+    if (el.type === 'checkbox') exam.answers[k] = [...main.querySelectorAll('input[type=checkbox][data-q="' + k + '"]:checked')].map(x => +x.value);
+    else exam.answers[k] = el.value;
+    save(); updProgress();
+  };
+  document.getElementById('nextQ').onclick = () => {
+    exam.qi++; exam.qStart = Date.now(); save();
+    if (exam.qi >= qs.length) finish(false); else { renderSlide(); tick(); }
+  };
+  const f = main.querySelector('.ans'); if (f) f.focus();
+  updProgress(); window.scrollTo(0, 0);
 }
 
 /* ---------- экзамен: ОПД ---------- */
@@ -1518,7 +1788,7 @@ function renderExam() {
   main.onclick = main.onkeydown = null;
   if (exam.finishedAt) return renderResult();
   renderBar();
-  if (exam.course === 'prog') renderProg(); else if (exam.course === 'opd2') renderOpd2(); else renderOpd();
+  if (exam.course === 'prog' || (exam.course === 'prog2' && exam.train)) renderProg(); else if (exam.course === 'prog2') renderSlide(); else if (exam.course === 'opd2') renderOpd2(); else renderOpd();
   window.scrollTo(0, 0);
 }
 
@@ -1545,6 +1815,7 @@ function finish(timeout) {
   exam.finishedAt = Math.min(Date.now(), exam.startedAt + exam.dur); exam.timeout = !!timeout; save();
   let score;
   if (exam.course === 'prog') { const g = gradeProg(); score = g.score.toFixed(2) + ' / ' + g.max.toFixed(2); }
+  else if (exam.course === 'prog2') { const qs = getData(); score = qs.filter((q, i) => KR2.grade(q, exam.answers[i])).length + ' / ' + qs.length; }
   else score = pct((exam.course === 'opd2' ? gradeOpd2() : gradeOpd()).total);
   const hist = store.get('krt.hist', []); hist.push({ course: exam.course, label: exam.label, score, when: exam.finishedAt, timeout: exam.timeout });
   store.set('krt.hist', hist.slice(-50));
@@ -1574,6 +1845,18 @@ function renderResult() {
         return `<li class="q ${cls}"><h3><span class="qn">${i + 1}.</span> ${esc(q.prompt)}</h3>
           ${q.code ? `<pre class="code">${esc(q.code)}</pre>` : ''}${q.call ? `<p class="call">${esc(q.call)}</p>` : ''}<p class="pts got">Полученные баллы за вопрос ${(gr * q.pts).toFixed(2)}/${q.pts.toFixed(2)}</p>${body}
           ${q.explain ? `<p class="explain">${esc(q.explain)}</p>` : ''}</li>`;
+      }).join('') + '</ol></div>';
+  } else if (exam.course === 'prog2') {
+    const qs = getData(), a = exam.answers, per = qs.map((q, i) => KR2.grade(q, a[i])), ok = per.filter(Boolean).length;
+    html = resultHead(ok + '<small> из ' + qs.length + '</small>', 'Верных ответов: <b>' + ok + '</b> из ' + qs.length + ' (' + pct(ok / qs.length) + ')') +
+      '<div class="sheet"><ol class="qlist review">' + qs.map((q, i) => {
+        const x = a[i], g = per[i];
+        const body = q.type === 'text'
+          ? `<p>Ваш ответ: <code class="ua">${x ? esc(x) : '—'}</code></p><p>${q.accept.length > 1 ? 'Правильные ответы' : 'Правильный ответ'}: ${q.accept.map(t => '<code class="ra">' + esc(t) + '</code>').join(' или ')}</p>`
+          : '<ul class="olist">' + q.opts.map((o, j) => `<li class="${q.correct[j] ? 'right' : ''} ${(x || []).includes(j) ? 'chosen' : ''}">${esc(o)}${(x || []).includes(j) ? ' <span class="mk">отмечено</span>' : ''}</li>`).join('') + '</ul>';
+        return `<li class="q ${g ? 'ok' : 'bad'}"><h3><span class="qn">${i + 1}.</span> ${esc(q.prompt)}</h3>
+          ${q.code ? `<pre class="code">${esc(q.code)}</pre>` : ''}<p class="pts got">${g ? 'Верно' : 'Неверно'} · ${g ? 1 : 0}/1</p>${body}
+          <p class="explain">${esc(q.explain)}</p></li>`;
       }).join('') + '</ol></div>';
   } else if (exam.course === 'opd2') {
     const v = getData(), g = gradeOpd2(), a = exam.answers, nShown = Object.keys(a.shown || {}).length;

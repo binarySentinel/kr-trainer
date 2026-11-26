@@ -18,12 +18,14 @@ const store = {
   del(k) { try { localStorage.removeItem(k); } catch (e) { } }
 };
 const GROUPS = {
-  prog: { title: 'Программирование', about: 'Контрольные работы по Java.', works: ['prog'] },
+  prog: { title: 'Программирование', about: 'Контрольные работы по Java.', works: ['prog', 'prog2'] },
   opd: { title: 'ОПД', about: 'Основы профессиональной деятельности: рубежные контроли.', works: ['opd', 'opd2'] }
 };
 const COURSES = {
   prog: { group: 'prog', title: 'Программирование', name: 'Контрольная работа №1', short: 'КР №1', min: CFG.progMinutes,
     desc: 'Основы Java: ветвления, циклы, switch, строки, массивы, методы.', meta: '20 вопросов · ' + CFG.progMinutes + ' минут · максимум 1.00 балла' },
+  prog2: { group: 'prog', title: 'Программирование', name: 'Контрольная работа №2', short: 'КР №2', min: 30,
+    desc: 'ООП в Java: принципы SOLID, переопределение методов, вложенные классы, исключения, enum, record, интерфейсы.<br>Как на рубежке: вопросы идут по одному, на каждый своё время (30 секунд – 1,5 минуты), вернуться назад нельзя.', meta: '10 вопросов · около 10 минут', train: true, trainText: 'Режим обучения: все вопросы сразу, без ограничения времени на вопрос' },
   opd: { group: 'opd', title: 'ОПД', name: 'Рубежный контроль №1', short: 'РК №1', min: CFG.opdMinutes,
     desc: 'Задание 1: дерево каталогов, содержимое файлов и права доступа (в терминале).<br>Задание 2: перевод в 16-ю систему, сложение в 16-разрядном дополнительном коде, флаги C и V.', meta: '2 задания · ' + CFG.opdMinutes + ' минут' },
   opd2: { group: 'opd', title: 'ОПД', name: 'Рубежный контроль №2', short: 'РК №2', min: CFG.opd2Minutes,
@@ -34,7 +36,7 @@ let data = null, dataKey = '', timerId = null, shell = null;
 
 function getData() {
   const key = exam.course + ':' + exam.seed;
-  if (key !== dataKey) { data = exam.course === 'prog' ? GEN.buildProg(exam.seed) : exam.course === 'opd2' ? BCOMP.buildVariant(exam.seed) : GEN.buildOpd(exam.seed); dataKey = key; }
+  if (key !== dataKey) { data = exam.course === 'prog' ? GEN.buildProg(exam.seed) : exam.course === 'prog2' ? KR2.build(exam.seed) : exam.course === 'opd2' ? BCOMP.buildVariant(exam.seed) : GEN.buildOpd(exam.seed); dataKey = key; }
   return data;
 }
 function save() { store.set('krt.exam', exam); }
@@ -93,7 +95,7 @@ function renderGroup(g) {
     <h1>${esc(G.title)}</h1>
     ${G.works.map(w => { const C = COURSES[w]; return `<div class="course">
       <div class="c-info"><h2>${esc(C.name)}</h2><p>${C.desc}</p><p class="meta">${esc(C.meta)}</p>
-      ${C.train ? `<label class="chk"><input type="checkbox" id="tr-${w}"> Режим обучения: проверка и подсказка по каждой строке во время решения</label>` : ''}</div>
+      ${C.train ? `<label class="chk"><input type="checkbox" id="tr-${w}"> ${C.trainText || 'Режим обучения: проверка и подсказка по каждой строке во время решения'}</label>` : ''}</div>
       <div class="c-start"><label class="sr" for="v-${w}">Вариант</label><select id="v-${w}">${varOpts()}</select><button class="btn primary" data-start="${w}">Начать попытку</button></div>
     </div>`; }).join('')}
   </section>` + histTable();
@@ -109,12 +111,26 @@ function goHome() { exam = null; store.del('krt.exam'); renderHome(); }
 function startExam(course, v, train) {
   const seed = v === 'r' ? (Math.floor(Math.random() * 4294967296) >>> 0) : GEN.hash(course + '-v' + v);
   exam = { course, v, seed, train: !!train, label: (v === 'r' ? 'Случайный вариант ' + seed.toString(36).toUpperCase() : 'Вариант ' + v) + (train ? ' (обучение)' : ''), startedAt: Date.now(), dur: COURSES[course].min * 60000, answers: {}, term: [], sh: course === 'opd' ? SHELL.newState() : null };
+  if (course === 'prog2') {
+    exam.qi = 0; exam.qStart = exam.startedAt;
+    exam.dur = train ? 30 * 60000 : KR2.build(seed).reduce((t, q) => t + q.secs, 0) * 1000;
+  }
   save(); renderExam();
 }
+const slideMode = () => exam && exam.course === 'prog2' && !exam.train;
 
 /* ---------- таймер и шапка ---------- */
 function stopTimer() { if (timerId) clearInterval(timerId); timerId = null; }
 function tick() {
+  if (slideMode()) {
+    const qs = getData(); let moved = false;
+    while (exam.qi < qs.length && Date.now() >= exam.qStart + qs[exam.qi].secs * 1000) { exam.qStart += qs[exam.qi].secs * 1000; exam.qi++; moved = true; }
+    if (moved) { save(); if (exam.qi >= qs.length) return finish(false); renderSlide(); }
+    const ql = exam.qStart + qs[exam.qi].secs * 1000 - Date.now(), t = document.getElementById('timer');
+    if (t) { t.textContent = fmtTime(ql); t.classList.toggle('warn', ql < 10000); }
+    const st = document.getElementById('slideTime'); if (st) st.textContent = fmtTime(ql);
+    return;
+  }
   const left = exam.startedAt + exam.dur - Date.now();
   const t = document.getElementById('timer');
   if (t) { t.textContent = fmtTime(left); t.classList.toggle('warn', left < 5 * 60000); }
@@ -123,7 +139,7 @@ function tick() {
 function renderBar() {
   bar.hidden = false; document.body.className = 'in-exam mode-' + exam.course;
   bar.innerHTML = `<div class="bar-in"><div class="bar-title">${esc(COURSES[exam.course].title)}. ${esc(COURSES[exam.course].name)}<span class="muted">${esc(exam.label)}</span></div>
-    <div class="bar-time">Осталось <b class="timer" id="timer">--:--</b></div>
+    <div class="bar-time">${slideMode() ? 'На вопрос' : 'Осталось'} <b class="timer" id="timer">--:--</b></div>
     <div class="bar-prog" id="progress"></div>
     <button class="btn finish" id="finishBtn">Завершить</button><button class="link" id="quitBtn">Прервать попытку</button></div>`;
   document.getElementById('finishBtn').onclick = confirmFinish;
@@ -136,7 +152,7 @@ function confirmFinish() {
 }
 function unanswered() {
   const a = exam.answers;
-  if (exam.course === 'prog') return getData().filter((q, i) => { const x = a[i]; return x == null || x === '' || (Array.isArray(x) && !x.length); }).length;
+  if (exam.course === 'prog' || exam.course === 'prog2') return getData().filter((q, i) => { const x = a[i]; return x == null || x === '' || (Array.isArray(x) && !x.length); }).length;
   if (exam.course === 'opd2') { const v = getData(); let n = a.f == null ? 1 : 0; v.rows.forEach((r, i) => BCOMP.COLS.forEach(c => { const x = (a.t || {})[i + c]; if (x == null || x === '') n++; })); return n; }
   return ['a', 'b', 's', 'C', 'V'].filter(k => a[k] == null || a[k] === '').length;
 }
@@ -146,13 +162,13 @@ function renderProg() {
   const qs = getData(), a = exam.answers;
   main.innerHTML = '<section class="band exam"><div class="sheet"><ol class="qlist">' + qs.map((q, i) => {
     let inp = '';
-    if (q.type === 'text') inp = `<input class="ans" data-q="${i}" value="${esc(a[i] || '')}" placeholder="Введите строку" autocomplete="off" spellcheck="false" aria-label="Ответ на вопрос ${i + 1}">`;
+    if (q.type === 'text') inp = `<input class="ans" data-q="${i}" value="${esc(a[i] || '')}" placeholder="${exam.course === 'prog2' ? 'Мой ответ' : 'Введите строку'}" autocomplete="off" spellcheck="false" aria-label="Ответ на вопрос ${i + 1}">`;
     else if (q.type === 'single') inp = '<div class="opts">' + q.opts.map((o, j) => `<label class="opt"><input type="radio" name="q${i}" data-q="${i}" value="${j}" ${a[i] === j ? 'checked' : ''}><span>${esc(o)}</span></label>`).join('') + '</div>';
     else inp = '<div class="opts">' + q.opts.map((o, j) => `<label class="opt"><input type="checkbox" data-q="${i}" value="${j}" ${(a[i] || []).includes(j) ? 'checked' : ''}><span>${esc(o)}</span></label>`).join('') + '</div>';
     return `<li class="q" id="q${i}"><h3><span class="qn">${i + 1}.</span> ${esc(q.prompt)}</h3>
       ${q.code ? `<pre class="code">${esc(q.code)}</pre>` : ''}${q.call ? `<p class="call">${esc(q.call)}</p>` : ''}
-      ${q.type === 'multi' ? '<details class="howto"><summary>Как оценивается?</summary><p>Балл = (верно отмеченные − неверно отмеченные) / число верных утверждений, но не меньше нуля.</p></details>' : ''}
-      <p class="pts">Баллы за вопрос: ${q.pts.toFixed(2)}</p>${inp}</li>`;
+      ${q.type === 'multi' ? '<details class="howto"><summary>Как оценивается?</summary><p>' + (exam.course === 'prog2' ? 'Отметьте все верные варианты. Вопрос засчитывается, только если отмечены все верные и ни одного лишнего.' : 'Балл = (верно отмеченные − неверно отмеченные) / число верных утверждений, но не меньше нуля.') + '</p></details>' : ''}
+      ${q.pts ? `<p class="pts">Баллы за вопрос: ${q.pts.toFixed(2)}</p>` : ''}${inp}</li>`;
   }).join('') + '</ol><div class="endrow"><button class="btn primary" id="finish2">Завершить попытку</button></div></div></section>';
   main.oninput = main.onchange = e => {
     const el = e.target; if (!el.dataset || el.dataset.q == null) return;
@@ -167,8 +183,36 @@ function renderProg() {
 }
 function updProgress() {
   const p = document.getElementById('progress'); if (!p) return;
-  const total = exam.course === 'prog' ? getData().length : exam.course === 'opd2' ? getData().rows.length * 8 + 1 : 5, done = total - unanswered();
+  const total = exam.course === 'prog' || exam.course === 'prog2' ? getData().length : exam.course === 'opd2' ? getData().rows.length * 8 + 1 : 5, done = total - unanswered();
   p.textContent = (exam.course === 'opd2' ? 'Заполнено ' : 'Отвечено ') + done + ' из ' + total;
+}
+
+/* ---------- экзамен: программирование КР2 (по одному вопросу) ---------- */
+function renderSlide() {
+  const qs = getData(), i = exam.qi, q = qs[i], a = exam.answers, last = i === qs.length - 1;
+  let inp;
+  if (q.type === 'text') inp = `<input class="ans" data-q="${i}" value="${esc(a[i] || '')}" placeholder="Мой ответ" autocomplete="off" spellcheck="false" aria-label="Ответ">`;
+  else inp = '<div class="opts">' + q.opts.map((o, j) => `<label class="opt"><input type="checkbox" data-q="${i}" value="${j}" ${(a[i] || []).includes(j) ? 'checked' : ''}><span>${esc(o)}</span></label>`).join('') + '</div>';
+  main.innerHTML = `<section class="band exam"><div class="sheet slide">
+    <div class="slide-top"><h2><span class="qn">${i + 1}.</span> ${esc(q.prompt)}</h2><div class="slide-clock"><span class="muted">Вопрос ${i + 1} из ${qs.length}</span><b id="slideTime">--:--</b></div></div>
+    ${q.code ? `<pre class="code">${esc(q.code)}</pre>` : ''}
+    ${q.type === 'multi' ? '<p class="pts">Отметьте все подходящие варианты</p>' : '<p class="pts">Введите ответ</p>'}
+    ${inp}
+    <div class="endrow"><button class="btn primary" id="nextQ">${last ? 'Завершить' : 'Следующий вопрос'}</button></div>
+  </div><p class="note">Как на рубежке: на каждый вопрос своё время, по его окончании вопрос сменится сам. Вернуться к прошлому вопросу нельзя.</p></section>`;
+  main.oninput = main.onchange = e => {
+    const el = e.target; if (!el.dataset || el.dataset.q == null) return;
+    const k = +el.dataset.q;
+    if (el.type === 'checkbox') exam.answers[k] = [...main.querySelectorAll('input[type=checkbox][data-q="' + k + '"]:checked')].map(x => +x.value);
+    else exam.answers[k] = el.value;
+    save(); updProgress();
+  };
+  document.getElementById('nextQ').onclick = () => {
+    exam.qi++; exam.qStart = Date.now(); save();
+    if (exam.qi >= qs.length) finish(false); else { renderSlide(); tick(); }
+  };
+  const f = main.querySelector('.ans'); if (f) f.focus();
+  updProgress(); window.scrollTo(0, 0);
 }
 
 /* ---------- экзамен: ОПД ---------- */
@@ -337,7 +381,7 @@ function renderExam() {
   main.onclick = main.onkeydown = null;
   if (exam.finishedAt) return renderResult();
   renderBar();
-  if (exam.course === 'prog') renderProg(); else if (exam.course === 'opd2') renderOpd2(); else renderOpd();
+  if (exam.course === 'prog' || (exam.course === 'prog2' && exam.train)) renderProg(); else if (exam.course === 'prog2') renderSlide(); else if (exam.course === 'opd2') renderOpd2(); else renderOpd();
   window.scrollTo(0, 0);
 }
 
@@ -364,6 +408,7 @@ function finish(timeout) {
   exam.finishedAt = Math.min(Date.now(), exam.startedAt + exam.dur); exam.timeout = !!timeout; save();
   let score;
   if (exam.course === 'prog') { const g = gradeProg(); score = g.score.toFixed(2) + ' / ' + g.max.toFixed(2); }
+  else if (exam.course === 'prog2') { const qs = getData(); score = qs.filter((q, i) => KR2.grade(q, exam.answers[i])).length + ' / ' + qs.length; }
   else score = pct((exam.course === 'opd2' ? gradeOpd2() : gradeOpd()).total);
   const hist = store.get('krt.hist', []); hist.push({ course: exam.course, label: exam.label, score, when: exam.finishedAt, timeout: exam.timeout });
   store.set('krt.hist', hist.slice(-50));
@@ -393,6 +438,18 @@ function renderResult() {
         return `<li class="q ${cls}"><h3><span class="qn">${i + 1}.</span> ${esc(q.prompt)}</h3>
           ${q.code ? `<pre class="code">${esc(q.code)}</pre>` : ''}${q.call ? `<p class="call">${esc(q.call)}</p>` : ''}<p class="pts got">Полученные баллы за вопрос ${(gr * q.pts).toFixed(2)}/${q.pts.toFixed(2)}</p>${body}
           ${q.explain ? `<p class="explain">${esc(q.explain)}</p>` : ''}</li>`;
+      }).join('') + '</ol></div>';
+  } else if (exam.course === 'prog2') {
+    const qs = getData(), a = exam.answers, per = qs.map((q, i) => KR2.grade(q, a[i])), ok = per.filter(Boolean).length;
+    html = resultHead(ok + '<small> из ' + qs.length + '</small>', 'Верных ответов: <b>' + ok + '</b> из ' + qs.length + ' (' + pct(ok / qs.length) + ')') +
+      '<div class="sheet"><ol class="qlist review">' + qs.map((q, i) => {
+        const x = a[i], g = per[i];
+        const body = q.type === 'text'
+          ? `<p>Ваш ответ: <code class="ua">${x ? esc(x) : '—'}</code></p><p>${q.accept.length > 1 ? 'Правильные ответы' : 'Правильный ответ'}: ${q.accept.map(t => '<code class="ra">' + esc(t) + '</code>').join(' или ')}</p>`
+          : '<ul class="olist">' + q.opts.map((o, j) => `<li class="${q.correct[j] ? 'right' : ''} ${(x || []).includes(j) ? 'chosen' : ''}">${esc(o)}${(x || []).includes(j) ? ' <span class="mk">отмечено</span>' : ''}</li>`).join('') + '</ul>';
+        return `<li class="q ${g ? 'ok' : 'bad'}"><h3><span class="qn">${i + 1}.</span> ${esc(q.prompt)}</h3>
+          ${q.code ? `<pre class="code">${esc(q.code)}</pre>` : ''}<p class="pts got">${g ? 'Верно' : 'Неверно'} · ${g ? 1 : 0}/1</p>${body}
+          <p class="explain">${esc(q.explain)}</p></li>`;
       }).join('') + '</ol></div>';
   } else if (exam.course === 'opd2') {
     const v = getData(), g = gradeOpd2(), a = exam.answers, nShown = Object.keys(a.shown || {}).length;
