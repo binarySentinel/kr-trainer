@@ -234,27 +234,28 @@ function renderSlide() {
 }
 
 /* ---------- экзамен: ОПД ---------- */
-function treeText(nodes) {
+function treeHtml(nodes) {
   const root = { c: {} };
-  nodes.forEach(n => { let cur = root; n.path.split('/').forEach(s => { cur.c[s] = cur.c[s] || { c: {}, n: null }; cur = cur.c[s]; }); cur.n = n; });
+  nodes.forEach(n => { let cur = root; n.path.split('/').forEach(x => { cur.c[x] = cur.c[x] || { c: {}, n: null }; cur = cur.c[x]; }); cur.n = n; });
   const lines = [];
-  const go = (node, pre) => { const ks = Object.keys(node.c).sort(); ks.forEach((k, i) => { const ch = node.c[k], last = i === ks.length - 1; lines.push(pre + (last ? '└── ' : '├── ') + k + (ch.n && ch.n.type === 'd' ? '/' : '')); go(ch, pre + (last ? '    ' : '│   ')); }); };
-  lines.push('lab0/'); go(root.c.lab0, '');
-  return lines.join('\n');
+  const go = (node, pre) => { const ks = Object.keys(node.c).sort(); ks.forEach((k, i) => { const ch = node.c[k], last = i === ks.length - 1; lines.push([pre + (last ? '└── ' : '├── ') + k, ch.n && ch.n.type === 'd']); go(ch, pre + (last ? '    ' : '│   ')); }); };
+  lines.push(['lab0', true]); go(root.c.lab0, '');
+  const w = Math.max(...lines.map(l => l[0].length)) + 3;
+  return lines.map(([t, d]) => esc(t.padEnd(w)) + `<span class="${d ? 'kd' : 'kf'}">${d ? 'каталог' : 'файл'}</span>`).join('\n');
 }
 function renderOpd() {
   const d = getData(), a = exam.answers;
   shell = new SHELL.Shell(exam.sh);
   const nodes = d.nodes.filter(n => n.path !== 'lab0');
   const content = nodes.filter(n => n.type === 'f').map(n => `<tr><td class="path">${esc(n.path)}</td><td class="content">${esc(n.content).replace(/\n/g, '<br>')}</td></tr>`).join('');
-  const perms = nodes.map(n => `<tr><td class="path">${esc(n.path)}${n.type === 'd' ? '/' : ''}</td><td>${esc(GEN.permText(n))}</td></tr>`).join('');
+  const perms = nodes.map(n => `<tr><td class="path">${esc(n.path)} <span class="${n.type === 'd' ? 'kd' : 'kf'}">${n.type === 'd' ? 'каталог' : 'файл'}</span></td><td>${esc(GEN.permText(n))}</td></tr>`).join('');
   main.innerHTML = `<section class="band exam opd">
   <div class="opd-grid">
     <div class="sheet task">
       <h2>Задание 1</h2>
-      <p>В домашнем каталоге создайте приведённое ниже дерево каталогов и файлов, запишите в файлы указанное содержимое и установите права доступа.</p>
+      <p>В домашнем каталоге создайте приведённое ниже дерево каталогов и файлов (справа от каждого имени указано, каталог это или файл), запишите в файлы указанное содержимое и установите права доступа.</p>
       <h3>1) Дерево каталогов</h3>
-      <pre class="tree">${esc(treeText(d.nodes))}</pre>
+      <pre class="tree">${treeHtml(d.nodes)}</pre>
       <h3>2) Содержимое файлов</h3>
       <div class="scroll"><table class="tbl spec"><thead><tr><th>Файл</th><th>Содержимое</th></tr></thead><tbody>${content}</tbody></table></div>
       <h3>3) Права доступа</h3>
