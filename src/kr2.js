@@ -30,7 +30,7 @@ const SOLID_T = {
   SO: R => {
     const v = R.pick([['Loser', 'age', 'luck'], ['Student', 'age', 'grade'], ['Account', 'id', 'balance'], ['Player', 'level', 'score'], ['Box', 'width', 'height']]);
     return { code: L(['public class ' + v[0] + ' {', '', '    public int ' + v[1] + ';', '    public int ' + v[2] + ';', '', '}']), ans: ['S', 'O'],
-      why: 'На рубежке для класса с открытыми (public) полями принят ответ S и O: нет инкапсуляции — любой внешний код может менять состояние, поэтому класс нельзя расширять, не трогая код, который с этими полями работает.' };
+      why: 'Ответ: S и O. Открытые (public) поля нарушают инкапсуляцию — любой внешний код может менять состояние, поэтому класс нельзя расширять, не трогая код, который работает с этими полями.' };
   },
   S: R => {
     const n = R.pick(['Report', 'Invoice', 'Order']);
@@ -122,7 +122,7 @@ const EXC = [
   { q: 'Укажите все свойства проверяемых исключений (checked)', items: [
     [false, 'Блок finally обязательный'], [true, 'Генерируются компилятором'], [false, 'Генерируются JVM'], [false, 'Без try-catch не скомпилируется'],
     [true, 'try-catch или throws обязательны'], [true, 'Наследуются от Throwable'], [false, 'Наследуются от Error'], [false, 'Не могут иметь конструктора по умолчанию'], [false, 'Не содержат в себе стек вызовов']],
-    ex: 'Проверяемые исключения наследуются от Exception (а значит, и от Throwable), но не от RuntimeException. Компилятор требует их обработать: try-catch или throws — что-то одно, поэтому «без try-catch не скомпилируется» неверно (хватит throws). На рубежке принят вариант «генерируются компилятором» — точнее, они проверяются компилятором. Стек вызовов есть у любого исключения, finally не обязателен.' },
+    ex: 'Проверяемые исключения наследуются от Exception (а значит, и от Throwable), но не от RuntimeException. Компилятор требует их обработать: try-catch или throws — что-то одно, поэтому «без try-catch не скомпилируется» неверно (хватит throws). Вариант «генерируются компилятором» здесь считается верным — точнее говоря, они проверяются компилятором. Стек вызовов есть у любого исключения, finally не обязателен.' },
   { q: 'Укажите все свойства непроверяемых исключений (unchecked)', items: [
     [true, 'Наследуются от RuntimeException или Error'], [true, 'Компилятор не требует их обрабатывать'], [false, 'try-catch или throws обязательны'], [true, 'Их можно перехватить в catch'],
     [true, 'Наследуются от Throwable'], [false, 'Не содержат в себе стек вызовов'], [false, 'Наследуются только от Exception напрямую'], [false, 'Блок finally обязательный']],
@@ -142,7 +142,7 @@ function genExc(R) {
 function genEnum(R) {
   if (R.r() < 0.65) {
     const pool = [[true, 'name()'], [true, 'ordinal()'], [true, 'values()'], [true, 'valueOf(String)'], [false, 'toString()'], [false, 'hashCode()'], [false, 'equals(Object)'],
-      [false, 'applySelfEffect(...)'], [false, 'order()'], [false, 'size()'], [false, 'getName()'], [false, 'sayPhrase(...)'], [false, 'завалитьРубежку()']];
+      [false, 'applySelfEffect(...)'], [false, 'order()'], [false, 'size()'], [false, 'getName()'], [false, 'sayPhrase(...)'], [false, 'getIndex()']];
     const tr = R.sample(pool.filter(x => x[0]), R.int(2, 3)), fl = R.sample(pool.filter(x => !x[0]), 7 - tr.length), it = R.shuffle(tr.concat(fl));
     return { prompt: 'Укажите методы enum (определённые ТОЛЬКО в enum)', opts: it.map(x => x[1]), correct: it.map(x => x[0]), secs: 60,
       explain: 'Только у перечислений есть name(), ordinal() (из класса Enum) и статические values(), valueOf(String), которые создаёт компилятор. toString(), hashCode(), equals() есть у любого объекта (Object).' };
