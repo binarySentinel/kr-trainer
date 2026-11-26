@@ -77,8 +77,8 @@ function renderHome() {
     ${Object.keys(GROUPS).map(k => `<a class="course group" href="#${k}">
       <div class="c-info"><h2>${esc(GROUPS[k].title)}</h2><p>${esc(GROUPS[k].about)}</p>
       <p class="meta">${GROUPS[k].works.map(w => esc(COURSES[w].name)).join(' · ')}</p></div>
-      <span class="btn">Открыть</span></a>`).join('')}
-    <p class="note">Варианты 1–20 всегда одинаковые, их удобно решать всей группой. Случайный вариант собирается заново при каждом запуске. Если время закончится, ответы сохранятся и работа будет сдана автоматически.</p>
+      <span class="btn primary">Открыть</span></a>`).join('')}
+    <p class="note">Варианты 1–20 всегда одинаковые. Случайный вариант собирается заново при каждом запуске. Если время закончится, ответы сохранятся и работа будет сдана автоматически.</p>
   </section>` + histTable();
   bindHist(renderHome);
   window.scrollTo(0, 0);
