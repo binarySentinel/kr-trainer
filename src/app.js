@@ -4,7 +4,8 @@ const CFG = {
   donateUrl: '',            // ссылка на Boosty / CloudTips; пусто — кнопка скрыта
   donateText: 'Поддержать проект',
   progMinutes: 30,
-  opdMinutes: 60
+  opdMinutes: 60,
+  opd2Minutes: 60
 };
 
 const main = document.getElementById('app');
@@ -16,16 +17,24 @@ const store = {
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { } },
   del(k) { try { localStorage.removeItem(k); } catch (e) { } }
 };
+const GROUPS = {
+  prog: { title: 'Программирование', about: 'Контрольные работы по Java.', works: ['prog'] },
+  opd: { title: 'ОПД', about: 'Основы профессиональной деятельности: рубежные контроли.', works: ['opd', 'opd2'] }
+};
 const COURSES = {
-  prog: { title: 'Программирование', name: 'Контрольная работа №1', min: CFG.progMinutes },
-  opd: { title: 'ОПД', name: 'Рубежный контроль №1', min: CFG.opdMinutes }
+  prog: { group: 'prog', title: 'Программирование', name: 'Контрольная работа №1', short: 'КР №1', min: CFG.progMinutes,
+    desc: 'Основы Java: ветвления, циклы, switch, строки, массивы, методы.', meta: '20 вопросов · ' + CFG.progMinutes + ' минут · максимум 1.00 балла' },
+  opd: { group: 'opd', title: 'ОПД', name: 'Рубежный контроль №1', short: 'РК №1', min: CFG.opdMinutes,
+    desc: 'Задание 1: дерево каталогов, содержимое файлов и права доступа (в терминале).<br>Задание 2: перевод в 16-ю систему, сложение в 16-разрядном дополнительном коде, флаги C и V.', meta: '2 задания · ' + CFG.opdMinutes + ' минут' },
+  opd2: { group: 'opd', title: 'ОПД', name: 'Рубежный контроль №2', short: 'РК №2', min: CFG.opd2Minutes,
+    desc: 'Задание 1: таблица трассировки программы БЭВМ (IP, CR, AR, DR, SP, BR, AC, NZVC после каждой команды).<br>Задание 2: восстановить формулу, которую вычисляет программа.', meta: '2 задания · ' + CFG.opd2Minutes + ' минут', train: true }
 };
 let exam = store.get('krt.exam', null);
 let data = null, dataKey = '', timerId = null, shell = null;
 
 function getData() {
   const key = exam.course + ':' + exam.seed;
-  if (key !== dataKey) { data = exam.course === 'prog' ? GEN.buildProg(exam.seed) : GEN.buildOpd(exam.seed); dataKey = key; }
+  if (key !== dataKey) { data = exam.course === 'prog' ? GEN.buildProg(exam.seed) : exam.course === 'opd2' ? BCOMP.buildVariant(exam.seed) : GEN.buildOpd(exam.seed); dataKey = key; }
   return data;
 }
 function save() { store.set('krt.exam', exam); }
@@ -44,45 +53,62 @@ function ask(html, buttons) {
 
 /* ---------- главная ---------- */
 const varOpts = () => '<option value="r">Случайный вариант</option>' + Array.from({ length: 20 }, (_, i) => '<option value="' + (i + 1) + '">Вариант ' + (i + 1) + '</option>').join('');
+function histTable() {
+  const hist = store.get('krt.hist', []).filter(h => COURSES[h.course]);
+  return `<section class="band">
+    <h2>Мои попытки</h2>
+    ${hist.length ? `<div class="scroll"><table class="tbl"><thead><tr><th>Дата</th><th>Работа</th><th>Вариант</th><th class="num">Результат</th></tr></thead><tbody>
+      ${hist.slice().reverse().map(h => `<tr><td>${esc(dateStr(h.when))}</td><td>${esc(COURSES[h.course].title + ', ' + COURSES[h.course].short)}</td><td>${esc(h.label)}</td><td class="num"><b>${esc(h.score)}</b>${h.timeout ? ' <span class="muted">(время вышло)</span>' : ''}</td></tr>`).join('')}
+      </tbody></table></div><button class="link" id="clearHist">Очистить историю</button>` : '<p class="muted">Попыток пока нет. История хранится только в этом браузере.</p>'}
+  </section>`;
+}
+function bindHist(after) {
+  const ch = document.getElementById('clearHist');
+  if (ch) ch.onclick = () => ask('<p>Удалить историю попыток в этом браузере?</p>', [{ label: 'Удалить', cls: 'danger', fn: () => { store.del('krt.hist'); after(); } }, { label: 'Отмена' }]);
+}
 function renderHome() {
-  stopTimer(); bar.hidden = true; document.body.className = '';
-  const hist = store.get('krt.hist', []);
+  const g = (location.hash || '').slice(1);
+  if (GROUPS[g]) return renderGroup(g);
+  stopTimer(); bar.hidden = true; document.body.className = ''; main.onclick = main.onkeydown = null;
   main.innerHTML = `
   <section class="band">
     <h1>Подготовка к контрольным работам</h1>
     <p class="lede">Тренировочные варианты для 1 курса ФПИиКТ. Работа выполняется на время, после сдачи показываются баллы и разбор каждого задания.</p>
-    <div class="course">
-      <div class="c-info"><h2>Программирование. Контрольная работа №1</h2>
-        <p>Основы Java: ветвления, циклы, switch, строки, массивы, методы.</p>
-        <p class="meta">20 вопросов · ${CFG.progMinutes} минут · максимум 1.00 балла</p></div>
-      <div class="c-start"><label class="sr" for="vp">Вариант</label><select id="vp">${varOpts()}</select><button class="btn primary" data-start="prog">Начать попытку</button></div>
-    </div>
-    <div class="course">
-      <div class="c-info"><h2>ОПД. Рубежный контроль №1</h2>
-        <p>Задание 1: дерево каталогов, содержимое файлов и права доступа (в терминале).<br>Задание 2: перевод в 16-ю систему, сложение в 16-разрядном дополнительном коде, флаги C и V.</p>
-        <p class="meta">2 задания · ${CFG.opdMinutes} минут</p></div>
-      <div class="c-start"><label class="sr" for="vo">Вариант</label><select id="vo">${varOpts()}</select><button class="btn primary" data-start="opd">Начать попытку</button></div>
-    </div>
+    ${Object.keys(GROUPS).map(k => `<a class="course group" href="#${k}">
+      <div class="c-info"><h2>${esc(GROUPS[k].title)}</h2><p>${esc(GROUPS[k].about)}</p>
+      <p class="meta">${GROUPS[k].works.map(w => esc(COURSES[w].name)).join(' · ')}</p></div>
+      <span class="btn">Открыть</span></a>`).join('')}
     <p class="note">Варианты 1–20 всегда одинаковые, их удобно решать всей группой. Случайный вариант собирается заново при каждом запуске. Если время закончится, ответы сохранятся и работа будет сдана автоматически.</p>
-  </section>
-  <section class="band">
-    <h2>Мои попытки</h2>
-    ${hist.length ? `<div class="scroll"><table class="tbl"><thead><tr><th>Дата</th><th>Работа</th><th>Вариант</th><th class="num">Результат</th></tr></thead><tbody>
-      ${hist.slice().reverse().map(h => `<tr><td>${esc(dateStr(h.when))}</td><td>${esc(COURSES[h.course].title)}</td><td>${esc(h.label)}</td><td class="num"><b>${esc(h.score)}</b>${h.timeout ? ' <span class="muted">(время вышло)</span>' : ''}</td></tr>`).join('')}
-      </tbody></table></div><button class="link" id="clearHist">Очистить историю</button>` : '<p class="muted">Попыток пока нет. История хранится только в этом браузере.</p>'}
-  </section>`;
-  main.querySelectorAll('[data-start]').forEach(b => b.onclick = () => {
-    const c = b.dataset.start, v = document.getElementById(c === 'prog' ? 'vp' : 'vo').value;
-    startExam(c, v);
-  });
-  const ch = document.getElementById('clearHist');
-  if (ch) ch.onclick = () => ask('<p>Удалить историю попыток в этом браузере?</p>', [{ label: 'Удалить', cls: 'danger', fn: () => { store.del('krt.hist'); renderHome(); } }, { label: 'Отмена' }]);
+  </section>` + histTable();
+  bindHist(renderHome);
   window.scrollTo(0, 0);
 }
+function renderGroup(g) {
+  stopTimer(); bar.hidden = true; document.body.className = '';
+  main.onclick = main.onkeydown = null;
+  const G = GROUPS[g];
+  main.innerHTML = `
+  <section class="band">
+    <p class="crumbs"><a href="#">Главная</a> / ${esc(G.title)}</p>
+    <h1>${esc(G.title)}</h1>
+    ${G.works.map(w => { const C = COURSES[w]; return `<div class="course">
+      <div class="c-info"><h2>${esc(C.name)}</h2><p>${C.desc}</p><p class="meta">${esc(C.meta)}</p>
+      ${C.train ? `<label class="chk"><input type="checkbox" id="tr-${w}"> Режим обучения: проверка и подсказка по каждой строке во время решения</label>` : ''}</div>
+      <div class="c-start"><label class="sr" for="v-${w}">Вариант</label><select id="v-${w}">${varOpts()}</select><button class="btn primary" data-start="${w}">Начать попытку</button></div>
+    </div>`; }).join('')}
+  </section>` + histTable();
+  main.querySelectorAll('[data-start]').forEach(b => b.onclick = () => {
+    const c = b.dataset.start, tr = document.getElementById('tr-' + c);
+    startExam(c, document.getElementById('v-' + c).value, tr && tr.checked);
+  });
+  bindHist(() => renderGroup(g));
+  window.scrollTo(0, 0);
+}
+function goHome() { exam = null; store.del('krt.exam'); renderHome(); }
 
-function startExam(course, v) {
+function startExam(course, v, train) {
   const seed = v === 'r' ? (Math.floor(Math.random() * 4294967296) >>> 0) : GEN.hash(course + '-v' + v);
-  exam = { course, v, seed, label: v === 'r' ? 'Случайный вариант ' + seed.toString(36).toUpperCase() : 'Вариант ' + v, startedAt: Date.now(), dur: COURSES[course].min * 60000, answers: {}, term: [], sh: course === 'opd' ? SHELL.newState() : null };
+  exam = { course, v, seed, train: !!train, label: (v === 'r' ? 'Случайный вариант ' + seed.toString(36).toUpperCase() : 'Вариант ' + v) + (train ? ' (обучение)' : ''), startedAt: Date.now(), dur: COURSES[course].min * 60000, answers: {}, term: [], sh: course === 'opd' ? SHELL.newState() : null };
   save(); renderExam();
 }
 
@@ -101,7 +127,7 @@ function renderBar() {
     <div class="bar-prog" id="progress"></div>
     <button class="btn finish" id="finishBtn">Завершить</button><button class="link" id="quitBtn">Прервать попытку</button></div>`;
   document.getElementById('finishBtn').onclick = confirmFinish;
-  document.getElementById('quitBtn').onclick = () => ask('<p>Прервать попытку? Ответы не сохранятся и в историю не попадут.</p>', [{ label: 'Прервать', cls: 'danger', fn: () => { exam = null; store.del('krt.exam'); renderHome(); } }, { label: 'Продолжить' }]);
+  document.getElementById('quitBtn').onclick = () => ask('<p>Прервать попытку? Ответы не сохранятся и в историю не попадут.</p>', [{ label: 'Прервать', cls: 'danger', fn: () => { const g = COURSES[exam.course].group; exam = null; store.del('krt.exam'); location.hash = g; renderHome(); } }, { label: 'Продолжить' }]);
   stopTimer(); tick(); timerId = setInterval(tick, 500);
 }
 function confirmFinish() {
@@ -111,6 +137,7 @@ function confirmFinish() {
 function unanswered() {
   const a = exam.answers;
   if (exam.course === 'prog') return getData().filter((q, i) => { const x = a[i]; return x == null || x === '' || (Array.isArray(x) && !x.length); }).length;
+  if (exam.course === 'opd2') { const v = getData(); let n = a.f == null ? 1 : 0; v.rows.forEach((r, i) => BCOMP.COLS.forEach(c => { const x = (a.t || {})[i + c]; if (x == null || x === '') n++; })); return n; }
   return ['a', 'b', 's', 'C', 'V'].filter(k => a[k] == null || a[k] === '').length;
 }
 
@@ -140,8 +167,8 @@ function renderProg() {
 }
 function updProgress() {
   const p = document.getElementById('progress'); if (!p) return;
-  const total = exam.course === 'prog' ? getData().length : 5, done = total - unanswered();
-  p.textContent = 'Отвечено ' + done + ' из ' + total;
+  const total = exam.course === 'prog' ? getData().length : exam.course === 'opd2' ? getData().rows.length * 8 + 1 : 5, done = total - unanswered();
+  p.textContent = (exam.course === 'opd2' ? 'Заполнено ' : 'Отвечено ') + done + ' из ' + total;
 }
 
 /* ---------- экзамен: ОПД ---------- */
@@ -235,10 +262,82 @@ function setupTerm() {
   draw();
 }
 
+/* ---------- экзамен: ОПД РК2 ---------- */
+function traceTable(v, mode) { // mode: 'exam' | 'review'
+  const a = exam.answers, t = a.t || {}, shown = a.shown || {};
+  const head = '<tr><th>Адрес</th><th>Команда / данные</th>' + BCOMP.COLS.map(c => '<th>' + c + '</th>').join('') + (mode === 'exam' && exam.train ? '<th></th><th></th>' : '') + '</tr>';
+  const body = BCOMP.listing(v).map(r => {
+    if (r.data) return `<tr class="data"><td>${r.addr}</td><td>${r.text}</td>${BCOMP.COLS.map(() => '<td></td>').join('')}${mode === 'exam' && exam.train ? '<td></td><td></td>' : ''}</tr>`;
+    const i = r.i, exp = v.rows[i];
+    const cells = BCOMP.COLS.map(c => {
+      const val = t[i + c] || '';
+      if (mode === 'exam') return `<td><input class="tc" data-r="${i}" data-c="${c}" value="${esc(val)}" maxlength="${c === 'NZVC' ? 4 : 4}" autocomplete="off" spellcheck="false" aria-label="${c}, ${r.addr}"></td>`;
+      const ok = !shown[i] && BCOMP.checkCell(c, val, exp[c]);
+      return ok ? `<td class="cok">${esc(exp[c])}</td>` : `<td class="cbad"><s>${esc(val || '—')}</s><b>${esc(exp[c])}</b></td>`;
+    }).join('');
+    const btns = mode === 'exam' && exam.train ? `<td><button class="mini" data-check="${i}">Проверить</button></td><td><button class="mini" data-show="${i}">Показать</button></td>` : '';
+    return `<tr class="cmd${shown[i] ? ' shown' : ''}" id="row${i}"><td>${r.addr}</td><td class="mn">${esc(r.text)}</td>${cells}${btns}</tr>`;
+  }).join('');
+  return '<div class="scroll"><table class="trace">' + head + body + '</table></div>';
+}
+function renderOpd2() {
+  const v = getData(), a = exam.answers;
+  a.t = a.t || {}; a.shown = a.shown || {};
+  main.innerHTML = `<section class="band exam opd2">
+  <div class="sheet task">
+    <h2>Задание 1</h2>
+    <p>В памяти БЭВМ находятся программа и данные. Программа запускается с адреса, отмеченного знаком «+». Перед запуском AC = 0000, флаги C = 0, V = 0. Заполните таблицу трассировки: значения регистров <b>после выполнения</b> каждой команды.</p>
+    <p class="hint">IP, AR, SP — три шестнадцатеричные цифры, CR, DR, BR, AC — четыре. NZVC — четыре бита, например <code>1001</code> (можно и в виде <code>N--C</code>).</p>
+    ${traceTable(v, 'exam')}
+  </div>
+  <div class="sheet task t2">
+    <h2>Задание 2</h2>
+    <p>Какую формулу вычисляет программа? A — ячейка ${BCOMP.hx(v.aA, 3)}, B — ячейка ${BCOMP.hx(v.aB, 3)}, результат C записывается в ячейку ${BCOMP.hx(v.aC, 3)}.</p>
+    <div class="opts">${v.options.list.map((o, j) => `<label class="opt"><input type="radio" name="f" data-f="${j}" ${a.f === j ? 'checked' : ''}><span>${esc(o)}</span></label>`).join('')}</div>
+  </div>
+  <div class="endrow"><button class="btn primary" id="finish2">Завершить попытку</button></div>
+  </section>`;
+  main.oninput = main.onchange = e => {
+    const el = e.target;
+    if (el.dataset.f != null) { a.f = +el.dataset.f; }
+    else if (el.dataset.r != null) { el.value = el.value.toUpperCase(); a.t[el.dataset.r + el.dataset.c] = el.value; el.classList.remove('ok', 'bad'); }
+    else return;
+    save(); updProgress();
+  };
+  main.onkeydown = e => {
+    const el = e.target; if (el.dataset.r == null) return;
+    const i = +el.dataset.r, k = BCOMP.COLS.indexOf(el.dataset.c);
+    let ni = i, nk = k;
+    if (e.key === 'Enter' || (e.key === 'ArrowRight' && el.selectionStart === el.value.length)) nk++;
+    else if (e.key === 'ArrowLeft' && el.selectionStart === 0) nk--;
+    else if (e.key === 'ArrowDown') ni++; else if (e.key === 'ArrowUp') ni--; else return;
+    if (nk >= BCOMP.COLS.length) { nk = 0; ni++; } if (nk < 0) { nk = BCOMP.COLS.length - 1; ni--; }
+    const nx = main.querySelector(`input[data-r="${ni}"][data-c="${BCOMP.COLS[nk]}"]`);
+    if (nx) { e.preventDefault(); nx.focus(); nx.select(); }
+  };
+  main.onclick = e => {
+    const c = e.target.dataset && (e.target.dataset.check ?? e.target.dataset.show);
+    if (c == null) return;
+    const i = +c, exp = v.rows[i];
+    if (e.target.dataset.show != null) { BCOMP.COLS.forEach(col => { a.t[i + col] = exp[col]; }); a.shown[i] = true; save(); renderOpd2(); updProgress(); return; }
+    BCOMP.COLS.forEach(col => { const inp = main.querySelector(`input[data-r="${i}"][data-c="${col}"]`); const ok = BCOMP.checkCell(col, a.t[i + col], exp[col]); inp.classList.toggle('ok', ok); inp.classList.toggle('bad', !ok); });
+  };
+  document.getElementById('finish2').onclick = confirmFinish;
+  updProgress();
+}
+function gradeOpd2() {
+  const v = getData(), a = exam.answers, t = a.t || {}, shown = a.shown || {};
+  let ok = 0, tot = 0;
+  v.rows.forEach((r, i) => BCOMP.COLS.forEach(c => { tot++; if (!shown[i] && BCOMP.checkCell(c, t[i + c], r[c])) ok++; }));
+  const t1 = ok / tot, t2 = a.f === v.options.correct ? 1 : 0;
+  return { ok, tot, t1, t2, total: 0.8 * t1 + 0.2 * t2 };
+}
+
 function renderExam() {
+  main.onclick = main.onkeydown = null;
   if (exam.finishedAt) return renderResult();
   renderBar();
-  if (exam.course === 'prog') renderProg(); else renderOpd();
+  if (exam.course === 'prog') renderProg(); else if (exam.course === 'opd2') renderOpd2(); else renderOpd();
   window.scrollTo(0, 0);
 }
 
@@ -265,7 +364,7 @@ function finish(timeout) {
   exam.finishedAt = Math.min(Date.now(), exam.startedAt + exam.dur); exam.timeout = !!timeout; save();
   let score;
   if (exam.course === 'prog') { const g = gradeProg(); score = g.score.toFixed(2) + ' / ' + g.max.toFixed(2); }
-  else score = pct(gradeOpd().total);
+  else score = pct((exam.course === 'opd2' ? gradeOpd2() : gradeOpd()).total);
   const hist = store.get('krt.hist', []); hist.push({ course: exam.course, label: exam.label, score, when: exam.finishedAt, timeout: exam.timeout });
   store.set('krt.hist', hist.slice(-50));
   renderResult();
@@ -278,6 +377,7 @@ function resultHead(big, sub) {
    <div class="res-btns"><button class="btn primary" id="again">Новая попытка</button><button class="btn" id="home">На главную</button></div></div>`;
 }
 function renderResult() {
+  main.onclick = main.onkeydown = main.oninput = main.onchange = null;
   stopTimer(); bar.hidden = true; document.body.className = '';
   let html = '';
   if (exam.course === 'prog') {
@@ -294,6 +394,14 @@ function renderResult() {
           ${q.code ? `<pre class="code">${esc(q.code)}</pre>` : ''}${q.call ? `<p class="call">${esc(q.call)}</p>` : ''}<p class="pts got">Полученные баллы за вопрос ${(gr * q.pts).toFixed(2)}/${q.pts.toFixed(2)}</p>${body}
           ${q.explain ? `<p class="explain">${esc(q.explain)}</p>` : ''}</li>`;
       }).join('') + '</ol></div>';
+  } else if (exam.course === 'opd2') {
+    const v = getData(), g = gradeOpd2(), a = exam.answers, nShown = Object.keys(a.shown || {}).length;
+    html = resultHead(pct(g.total), 'Задание 1: <b>' + pct(g.t1) + '</b> (' + g.ok + ' из ' + g.tot + ' ячеек), задание 2: <b>' + (g.t2 ? 'верно' : 'неверно') + '</b>' + (nShown ? '<br><span class="muted">Строк, открытых кнопкой «Показать»: ' + nShown + ' (они не засчитываются)</span>' : '')) +
+      `<div class="sheet task"><h2>Задание 1</h2><p class="muted">Зелёным — верно; красным — ваше значение зачёркнуто, рядом правильное.</p>${traceTable(v, 'review')}
+       <h3>Разбор по командам</h3><ol class="expl">${v.prog.map((p, i) => '<li>' + esc(BCOMP.explain(v, i)) + '</li>').join('')}</ol></div>
+       <div class="sheet task"><h2>Задание 2</h2>
+       <ul class="olist">${v.options.list.map((o, j) => `<li class="${j === v.options.correct ? 'right' : ''} ${a.f === j ? 'chosen' : ''}">${esc(o)}${a.f === j ? ' <span class="mk">ваш выбор</span>' : ''}</li>`).join('')}</ul>
+       <p class="explain">Значение AC после каждой команды: ${v.prog.map((p, i) => v.forms[i] ? esc(p.mn + (p.arg != null ? ' ' + BCOMP.hx(p.arg, 3) : '') + ' → ' + v.forms[i]) : '').filter(Boolean).join('; ')}.</p></div>`;
   } else {
     const d = getData(), g = gradeOpd();
     const bad = g.items.filter(i => !i.ok);
@@ -310,8 +418,8 @@ function renderResult() {
        </tbody></table></div><h3>Разбор</h3><pre class="code">${esc(GEN.explainFlags(d.A, d.B))}</pre></div>`;
   }
   main.innerHTML = '<section class="band result' + (exam.course === 'opd' ? ' opd-res' : '') + '">' + html + '</section>';
-  document.getElementById('home').onclick = () => { exam = null; store.del('krt.exam'); renderHome(); };
-  document.getElementById('again').onclick = () => startExam(exam.course, 'r');
+  document.getElementById('home').onclick = () => { const g = COURSES[exam.course].group; exam = null; store.del('krt.exam'); location.hash = g; renderHome(); };
+  document.getElementById('again').onclick = () => startExam(exam.course, 'r', exam.train);
   const ob = document.getElementById('onlyBad');
   if (ob) { const tb = document.getElementById('chkTbl'); const f = () => tb.classList.toggle('only-bad', ob.checked); ob.onchange = f; f(); }
   const cs = document.getElementById('copySol');
@@ -322,7 +430,8 @@ function renderResult() {
 /* ---------- старт ---------- */
 const don = document.getElementById('donate');
 if (CFG.donateUrl) { don.href = CFG.donateUrl; don.textContent = CFG.donateText; don.hidden = false; }
-document.getElementById('logo').onclick = e => { e.preventDefault(); if (exam && !exam.finishedAt) return; exam = null; store.del('krt.exam'); renderHome(); };
+document.getElementById('logo').onclick = e => { e.preventDefault(); if (exam && !exam.finishedAt) return; exam = null; store.del('krt.exam'); history.replaceState(null, '', location.pathname); renderHome(); };
+window.addEventListener('hashchange', () => { if (!exam) renderHome(); });
 if (exam && !exam.finishedAt && Date.now() >= exam.startedAt + exam.dur) finish(true);
 else if (exam) renderExam();
 else renderHome();

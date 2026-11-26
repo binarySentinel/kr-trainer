@@ -124,6 +124,21 @@ footer{margin-top:30px}
 .foot{max-width:1180px;margin:0 auto;padding:18px 20px 30px;display:flex;flex-wrap:wrap;gap:12px 24px;justify-content:space-between;align-items:center;font-size:12px;color:var(--mut)}
 .foot p{margin:0;max-width:80ch}
 #donate{text-decoration:none}
+.group{text-decoration:none;color:inherit}.group:hover{box-shadow:0 0 0 1px var(--blue)}
+.crumbs{font-size:13px;color:var(--mut);margin:0 0 4px}.crumbs a{color:var(--blue);text-decoration:none}
+.course .chk{margin-top:6px}
+.trace{border-collapse:collapse;font:14px var(--mono);background:#fff;margin:10px 0}
+.trace th,.trace td{border:1px solid #c9ced5;padding:0;text-align:center;height:34px}
+.trace th{background:#f0f2f5;font:600 13px Montserrat,Arial,sans-serif;padding:4px 8px}
+.trace td:nth-child(1){padding:0 8px;background:#f6f7f9}.trace td.mn{padding:0 10px;text-align:left;white-space:nowrap;min-width:110px}
+.trace tr.data td{color:#5d636b}
+.tc{width:62px;border:0;border-radius:0;min-height:34px;padding:2px 4px;text-align:center;font:14px var(--mono);text-transform:uppercase;background:transparent}
+.tc:focus{box-shadow:inset 0 0 0 2px var(--blue);border:0}
+.tc.ok{background:var(--okbg)}.tc.bad{background:var(--badbg)}
+.trace tr.shown td{background:#fbf7e8}
+.mini{font:12px Montserrat,Arial,sans-serif;border:0;background:none;color:var(--blue);cursor:pointer;padding:6px 8px;min-height:34px}
+.trace td.cok{color:var(--ok);padding:0 6px}.trace td.cbad{padding:2px 6px;line-height:1.2}.cbad s{display:block;color:var(--bad);font-size:12px}.cbad b{color:var(--ink);font-weight:600}
+.expl{padding-left:20px;font-size:14px;color:#4a4f57}.expl li{margin-bottom:8px}
 @media(max-width:600px){.sheet,.res-head{padding:18px 16px}.top-note{display:none}.bar-title{flex-basis:100%;font-size:13px}.bar-title span{display:none}
  .code{font-size:14px}.copyrow{margin-top:8px}.spec .path{width:auto}}
 </style>
@@ -949,13 +964,224 @@ return { Shell, newState, parseLine, HOME, modeStr };
 })();
 if (typeof module !== 'undefined') module.exports = SHELL;
 
+/* Модель БЭВМ-NG на уровне команд (значения регистров после выполнения команды) и генератор вариантов РК2 */
+var BCOMP = (function () {
+'use strict';
+const M16 = 0xFFFF;
+const hx = (v, w) => (v & (w === 3 ? 0x7FF : M16)).toString(16).toUpperCase().padStart(w, '0');
+
+const NOADDR = { CLA: 0x0200, NOT: 0x0280, CLC: 0x0300, CMC: 0x0380, ROL: 0x0400, ROR: 0x0480, ASL: 0x0500, ASR: 0x0580, INC: 0x0700, DEC: 0x0740, NEG: 0x0780, HLT: 0x0100, NOP: 0x0000 };
+const ADDR = { AND: 0x2000, OR: 0x3000, ADD: 0x4000, ADC: 0x5000, SUB: 0x6000, CMP: 0x7000, LD: 0xA000, ST: 0xE000 };
+
+function encode(mn, arg) {
+  if (mn in NOADDR) return NOADDR[mn];
+  return ADDR[mn] | (arg & 0x7FF);
+}
+
+/* сложение с флагами: a + b + cin */
+function addc(a, b, cin) {
+  const s = a + b + cin, r = s & M16;
+  const v = ((~(a ^ b) & (a ^ r)) & 0x8000) ? 1 : 0;
+  return { r, c: s > M16 ? 1 : 0, v };
+}
+const nz = r => ({ n: (r >> 15) & 1, z: r === 0 ? 1 : 0 });
+
+/* Выполнить одну команду. st = {mem: Map addr→val, IP, AC, C, N, Z, V, SP} → возвращает строку регистров */
+function step(st) {
+  const ip = st.IP, cmd = st.mem[ip] || 0;
+  let AR = ip, DR = cmd, BR = ip, CR = cmd, IP = (ip + 1) & 0x7FF;
+  const op = cmd >> 12;
+  let AC = st.AC, f = { N: st.N, Z: st.Z, V: st.V, C: st.C }, wrote = null, halt = false;
+  const setNZ = r => { const t = nz(r); f.N = t.n; f.Z = t.z; };
+  if (op === 0) {
+    switch (cmd) {
+      case 0x0000: break;
+      case 0x0100: halt = true; break;
+      case 0x0200: AC = 0; setNZ(AC); f.V = 0; break;
+      case 0x0280: AC = (~AC) & M16; setNZ(AC); f.V = 0; break;
+      case 0x0300: f.C = 0; break;
+      case 0x0380: f.C ^= 1; break;
+      case 0x0400: { const c = (AC >> 15) & 1; AC = ((AC << 1) | f.C) & M16; f.C = c; setNZ(AC); f.V = f.N ^ f.C; break; }
+      case 0x0480: { const c = AC & 1; AC = (AC >> 1) | (f.C << 15); f.C = c; setNZ(AC); f.V = f.N ^ f.C; break; }
+      case 0x0500: { DR = AC; const c = (AC >> 15) & 1; AC = (AC << 1) & M16; f.C = c; setNZ(AC); f.V = f.N ^ f.C; break; }
+      case 0x0580: { const c = AC & 1; AC = (AC >> 1) | (AC & 0x8000); f.C = c; setNZ(AC); f.V = f.N ^ f.C; break; }
+      case 0x0700: { const t = addc(AC, 1, 0); AC = t.r; f.C = t.c; f.V = t.v; setNZ(AC); break; }
+      case 0x0740: { const t = addc(AC, M16, 0); AC = t.r; f.C = t.c; f.V = t.v; setNZ(AC); break; }
+      case 0x0780: { const t = addc((~AC) & M16, 1, 0); AC = t.r; f.C = t.c; f.V = t.v; setNZ(AC); break; }
+      default: throw new Error('unsupported ' + cmd.toString(16));
+    }
+  } else {
+    const addr = cmd & 0x7FF; AR = addr;
+    const mv = st.mem[addr] || 0;
+    switch (op) {
+      case 0x2: DR = mv; AC = AC & mv; setNZ(AC); f.V = 0; break;
+      case 0x3: DR = mv; AC = AC | mv; BR = (~AC) & M16; setNZ(AC); f.V = 0; break;
+      case 0x4: { DR = mv; const t = addc(AC, mv, 0); AC = t.r; f.C = t.c; f.V = t.v; setNZ(AC); break; }
+      case 0x5: { DR = mv; const t = addc(AC, mv, f.C); AC = t.r; f.C = t.c; f.V = t.v; setNZ(AC); break; }
+      case 0x6: { DR = mv; const t = addc(AC, (~mv) & M16, 1); AC = t.r; f.C = t.c; f.V = t.v; setNZ(AC); break; }
+      case 0x7: { DR = mv; const t = addc(AC, (~mv) & M16, 1); f.C = t.c; f.V = t.v; const q = nz(t.r); f.N = q.n; f.Z = q.z; break; }
+      case 0xA: DR = mv; AC = mv; setNZ(AC); f.V = 0; break;
+      case 0xE: DR = AC; st.mem[addr] = AC; wrote = addr; break;
+      default: throw new Error('unsupported ' + cmd.toString(16));
+    }
+  }
+  Object.assign(st, { IP, AC }, f);
+  return { IP, CR, AR, DR, SP: st.SP, BR, AC, NZVC: '' + f.N + f.Z + f.V + f.C, wrote, halt };
+}
+
+function fmtRow(r) {
+  return { IP: hx(r.IP, 3), CR: hx(r.CR, 4), AR: hx(r.AR, 3), DR: hx(r.DR, 4), SP: hx(r.SP, 3), BR: hx(r.BR, 4), AC: hx(r.AC, 4), NZVC: r.NZVC };
+}
+
+/* ---------- генерация варианта ---------- */
+function rng(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+
+/* AC как линейная форма a·A + b·B + c */
+function buildVariant(seed) {
+  const r = rng(seed), int = (a, b) => a + Math.floor(r() * (b - a + 1)), pick = a => a[Math.floor(r() * a.length)];
+  for (let attempt = 0; attempt < 200; attempt++) {
+    const base = 0x00A, aA = base, aB = base + 1, aC = base + 2, start = base + 3;
+    const prog = [];
+    let lin = { a: 0, b: 0, c: 0 };
+    const forms = [];
+    const add = (mn, arg) => { prog.push({ mn, arg }); forms.push(null); };
+    const snap = () => { forms[forms.length - 1] = linStr(lin); };
+    const first = pick(['CLA+ADD', 'CLA+OR', 'CLA+ADD', 'LD', 'CLA+SUB']);
+    const v1 = pick(['A', 'B']), addr = x => x === 'A' ? aA : aB;
+    if (first === 'LD') { add('LD', addr(v1)); lin[v1.toLowerCase()] = 1; snap(); }
+    else {
+      add('CLA'); snap();
+      const mn = first.split('+')[1];
+      add(mn, addr(v1)); lin[v1.toLowerCase()] = mn === 'SUB' ? -1 : 1; snap();
+    }
+    const n = int(4, 7);
+    const pool = ['ADD A', 'ADD B', 'SUB A', 'SUB B', 'ASL', 'ASL', 'NOT', 'INC', 'DEC', 'NEG'];
+    let prev = '';
+    for (let i = 0; i < n; i++) {
+      let o; do { o = pick(pool); } while (o === prev && o !== 'ASL');
+      prev = o;
+      const [mn, v] = o.split(' ');
+      if (v) { add(mn, addr(v)); lin[v.toLowerCase()] += mn === 'ADD' ? 1 : -1; snap(); }
+      else {
+        add(mn);
+        if (mn === 'ASL') lin = { a: lin.a * 2, b: lin.b * 2, c: lin.c * 2 };
+        else if (mn === 'NOT') lin = { a: -lin.a, b: -lin.b, c: -lin.c - 1 };
+        else if (mn === 'NEG') lin = { a: -lin.a, b: -lin.b, c: -lin.c };
+        else if (mn === 'INC') lin.c += 1; else if (mn === 'DEC') lin.c -= 1;
+        snap();
+      }
+    }
+    add('ST', aC); forms[forms.length - 1] = 'C = ' + linStr(lin); add('HLT');
+    if (lin.a === 0 || lin.b === 0 || Math.abs(lin.a) > 8 || Math.abs(lin.b) > 8 || Math.abs(lin.c) > 6) continue;
+    const A = int(0, M16), B = int(0, M16), C0 = int(0, M16);
+    const mem = {}; mem[aA] = A; mem[aB] = B; mem[aC] = C0;
+    prog.forEach((p, i) => { mem[start + i] = encode(p.mn, p.arg); });
+    const memInit = Object.assign({}, mem);
+    const st = { mem, IP: start, AC: 0, N: 0, Z: 1, V: 0, C: 0, SP: 0 };
+    const rows = prog.map(() => step(st));
+    // хотя бы один флаг V или C должен «сработать» — иначе вариант слишком простой
+    if (!rows.some(x => x.NZVC[2] === '1' || x.NZVC[3] === '1')) continue;
+    const formula = fmtLin(lin);
+    return { forms, base, aA, aB, aC, start, prog, memInit, rows: rows.map(fmtRow), raw: rows, lin, formula, options: formulaOptions(lin, r), A, B, C0, final: mem[aC] };
+  }
+  throw new Error('variant');
+}
+
+function term(k, name, first) {
+  if (k === 0) return '';
+  const s = k < 0 ? '−' : '+', a = Math.abs(k), t = (a === 1 ? '' : a + '·') + name;
+  return first ? (k < 0 ? '−' : '') + t : ' ' + s + ' ' + t;
+}
+function linStr(l) {
+  let s = term(l.a, 'A', true); s += term(l.b, 'B', !s);
+  if (l.c) s += s ? ' ' + (l.c < 0 ? '−' : '+') + ' ' + Math.abs(l.c) : (l.c < 0 ? '−' : '') + Math.abs(l.c);
+  return s || '0';
+}
+function fmtLin(l) { return 'C = ' + linStr(l); }
+function formulaOptions(lin, r) {
+  const key = l => l.a + ',' + l.b + ',' + l.c, seen = new Set([key(lin)]), out = [lin];
+  const muts = [l => ({ a: l.a, b: l.b, c: l.c + 1 }), l => ({ a: l.a, b: l.b, c: l.c - 1 }), l => ({ a: l.b, b: l.a, c: l.c }),
+    l => ({ a: -l.a, b: l.b, c: l.c }), l => ({ a: l.a, b: -l.b, c: l.c }), l => ({ a: l.a * 2, b: l.b, c: l.c }), l => ({ a: l.a, b: l.b * 2, c: l.c }),
+    l => ({ a: l.a + (l.a > 0 ? -1 : 1), b: l.b, c: l.c }), l => ({ a: -l.a, b: -l.b, c: -l.c })];
+  let guard = 0;
+  while (out.length < 4 && guard++ < 200) {
+    const m = muts[Math.floor(r() * muts.length)](out[Math.floor(r() * out.length)]);
+    if (m.a === 0 || m.b === 0 || seen.has(key(m))) continue;
+    seen.add(key(m)); out.push(m);
+  }
+  for (let i = out.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [out[i], out[j]] = [out[j], out[i]]; }
+  return { list: out.map(fmtLin), correct: out.findIndex(x => key(x) === key(lin)) };
+}
+
+/* ---------- разбор строки ---------- */
+const NAMES = { CLA: 'очистка аккумулятора', NOT: 'инверсия аккумулятора', INC: 'инкремент', DEC: 'декремент', NEG: 'смена знака (дополнение)', ASL: 'арифметический сдвиг влево', ASR: 'арифметический сдвиг вправо', HLT: 'останов', ADD: 'сложение', SUB: 'вычитание', AND: 'логическое И', OR: 'логическое ИЛИ', LD: 'загрузка', ST: 'сохранение' };
+function explain(v, i) {
+  const p = v.prog[i], r = v.rows[i], addr = hx(v.start + i, 3), prevAC = i === 0 ? '0000' : v.rows[i - 1].AC;
+  const L = [];
+  const mn = p.mn + (p.arg != null ? ' ' + hx(p.arg, 3) : '');
+  L.push(addr + ': ' + mn + ' — ' + (NAMES[p.mn] || '') + ', код ' + r.CR + '.');
+  L.push('Выборка команды: CR = ' + r.CR + ', IP = ' + addr + ' + 1 = ' + r.IP + '.');
+  if (p.arg == null) {
+    L.push('Безадресная команда: AR = адрес самой команды (' + r.AR + '), ' + (p.mn === 'ASL' ? 'DR = прежнее значение AC (' + r.DR + '), т.к. сдвиг идёт через DR' : 'DR = код команды (' + r.DR + ')') + ', BR = ' + r.BR + '.');
+  } else if (p.mn === 'ST') {
+    L.push('Прямая адресация: AR = ' + r.AR + '. В DR попадает записываемое значение AC = ' + r.DR + ', оно же записывается в ячейку ' + r.AR + '. BR = адрес команды (' + r.BR + '). Флаги не меняются.');
+  } else {
+    L.push('Прямая адресация: AR = ' + r.AR + ', DR = содержимое ячейки ' + r.AR + ' = ' + r.DR + '.');
+    if (p.mn === 'OR') L.push('В БЭВМ-NG OR выполняется как ¬(¬AC & ¬M): промежуточное ¬AC & ¬M остаётся в BR, то есть BR = ¬результат = ' + r.BR + '.');
+    else L.push('BR = адрес команды (' + r.BR + ').');
+  }
+  const ops = { CLA: '0', NOT: '¬' + prevAC, INC: prevAC + ' + 1', DEC: prevAC + ' − 1', NEG: '−' + prevAC + ' (¬AC + 1)', ASL: prevAC + ' << 1', ASR: prevAC + ' >> 1',
+    ADD: prevAC + ' + ' + r.DR, SUB: prevAC + ' − ' + r.DR + ' (= ' + prevAC + ' + ¬' + r.DR + ' + 1)', OR: prevAC + ' | ' + r.DR, AND: prevAC + ' & ' + r.DR, LD: r.DR };
+  if (ops[p.mn] != null) L.push('AC = ' + ops[p.mn] + ' = ' + r.AC + '.');
+  const [N, Z, V, C] = r.NZVC.split('').map(Number);
+  if (!['ST', 'HLT'].includes(p.mn)) {
+    const why = [];
+    why.push('N = ' + N + (N ? ' (старший бит результата 1)' : ''));
+    why.push('Z = ' + Z + (Z ? ' (результат 0)' : ''));
+    if (['ADD', 'SUB', 'INC', 'DEC', 'NEG'].includes(p.mn)) {
+      why.push('V = ' + V + (V ? ' (переполнение знакового результата)' : ''));
+      why.push('C = ' + C + (p.mn === 'SUB' ? ' (перенос при сложении с ¬M + 1; C = 1, если вычитание без заёма)' : p.mn === 'DEC' ? ' (DEC = AC + FFFF: перенос есть всегда, кроме AC = 0)' : C ? ' (перенос из 15-го разряда)' : ''));
+    } else if (['ASL', 'ASR'].includes(p.mn)) {
+      why.push('C = ' + C + ' (выдвинутый бит)'); why.push('V = N ⊕ C = ' + V);
+    } else if (['CLA', 'NOT', 'LD', 'OR', 'AND'].includes(p.mn)) {
+      why.push('V = 0, C не меняется (' + C + ')');
+    }
+    L.push('Флаги: ' + why.join(', ') + ' → NZVC = ' + r.NZVC + '.');
+  } else if (p.mn === 'HLT') L.push('Останов: регистры, кроме выборки, не меняются; IP всё равно увеличивается.');
+  return L.join(' ');
+}
+
+function normHex(s) { const t = String(s || '').trim().toUpperCase().replace(/^0X/, ''); return /^[0-9A-F]{1,4}$/.test(t) ? parseInt(t, 16) : null; }
+function normFlags(s) {
+  let t = String(s || '').trim().toUpperCase().replace(/\s+/g, '');
+  if (/^[01]{4}$/.test(t)) return t;
+  if (/^[N\-][Z\-][V\-][C\-]$/.test(t)) return t.split('').map(ch => ch === '-' ? '0' : '1').join('');
+  return null;
+}
+const COLS = ['IP', 'CR', 'AR', 'DR', 'SP', 'BR', 'AC', 'NZVC'];
+function checkCell(col, given, exp) {
+  if (col === 'NZVC') return normFlags(given) === exp;
+  const g = normHex(given); return g != null && g === parseInt(exp, 16);
+}
+function listing(v) {
+  const rows = [];
+  [v.aA, v.aB, v.aC].forEach((a, k) => rows.push({ addr: hx(a, 3), text: hx(v.memInit[a], 4), data: true, name: 'ABC'[k] }));
+  v.prog.forEach((p, i) => rows.push({ addr: hx(v.start + i, 3), text: (i === 0 ? '+ ' : '') + p.mn + (p.arg != null ? ' ' + hx(p.arg, 3) : ''), code: hx(encode(p.mn, p.arg), 4), data: false, i }));
+  return rows;
+}
+
+return { step, encode, buildVariant, explain, checkCell, normHex, normFlags, COLS, listing, hx, fmtLin };
+})();
+if (typeof module !== 'undefined') module.exports = BCOMP;
+
 {
 /* ===== Настройки сайта: меняйте здесь ===== */
 const CFG = {
   donateUrl: '',            // ссылка на Boosty / CloudTips; пусто — кнопка скрыта
   donateText: 'Поддержать проект',
   progMinutes: 30,
-  opdMinutes: 60
+  opdMinutes: 60,
+  opd2Minutes: 60
 };
 
 const main = document.getElementById('app');
@@ -967,16 +1193,24 @@ const store = {
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { } },
   del(k) { try { localStorage.removeItem(k); } catch (e) { } }
 };
+const GROUPS = {
+  prog: { title: 'Программирование', about: 'Контрольные работы по Java.', works: ['prog'] },
+  opd: { title: 'ОПД', about: 'Основы профессиональной деятельности: рубежные контроли.', works: ['opd', 'opd2'] }
+};
 const COURSES = {
-  prog: { title: 'Программирование', name: 'Контрольная работа №1', min: CFG.progMinutes },
-  opd: { title: 'ОПД', name: 'Рубежный контроль №1', min: CFG.opdMinutes }
+  prog: { group: 'prog', title: 'Программирование', name: 'Контрольная работа №1', short: 'КР №1', min: CFG.progMinutes,
+    desc: 'Основы Java: ветвления, циклы, switch, строки, массивы, методы.', meta: '20 вопросов · ' + CFG.progMinutes + ' минут · максимум 1.00 балла' },
+  opd: { group: 'opd', title: 'ОПД', name: 'Рубежный контроль №1', short: 'РК №1', min: CFG.opdMinutes,
+    desc: 'Задание 1: дерево каталогов, содержимое файлов и права доступа (в терминале).<br>Задание 2: перевод в 16-ю систему, сложение в 16-разрядном дополнительном коде, флаги C и V.', meta: '2 задания · ' + CFG.opdMinutes + ' минут' },
+  opd2: { group: 'opd', title: 'ОПД', name: 'Рубежный контроль №2', short: 'РК №2', min: CFG.opd2Minutes,
+    desc: 'Задание 1: таблица трассировки программы БЭВМ (IP, CR, AR, DR, SP, BR, AC, NZVC после каждой команды).<br>Задание 2: восстановить формулу, которую вычисляет программа.', meta: '2 задания · ' + CFG.opd2Minutes + ' минут', train: true }
 };
 let exam = store.get('krt.exam', null);
 let data = null, dataKey = '', timerId = null, shell = null;
 
 function getData() {
   const key = exam.course + ':' + exam.seed;
-  if (key !== dataKey) { data = exam.course === 'prog' ? GEN.buildProg(exam.seed) : GEN.buildOpd(exam.seed); dataKey = key; }
+  if (key !== dataKey) { data = exam.course === 'prog' ? GEN.buildProg(exam.seed) : exam.course === 'opd2' ? BCOMP.buildVariant(exam.seed) : GEN.buildOpd(exam.seed); dataKey = key; }
   return data;
 }
 function save() { store.set('krt.exam', exam); }
@@ -995,45 +1229,62 @@ function ask(html, buttons) {
 
 /* ---------- главная ---------- */
 const varOpts = () => '<option value="r">Случайный вариант</option>' + Array.from({ length: 20 }, (_, i) => '<option value="' + (i + 1) + '">Вариант ' + (i + 1) + '</option>').join('');
+function histTable() {
+  const hist = store.get('krt.hist', []).filter(h => COURSES[h.course]);
+  return `<section class="band">
+    <h2>Мои попытки</h2>
+    ${hist.length ? `<div class="scroll"><table class="tbl"><thead><tr><th>Дата</th><th>Работа</th><th>Вариант</th><th class="num">Результат</th></tr></thead><tbody>
+      ${hist.slice().reverse().map(h => `<tr><td>${esc(dateStr(h.when))}</td><td>${esc(COURSES[h.course].title + ', ' + COURSES[h.course].short)}</td><td>${esc(h.label)}</td><td class="num"><b>${esc(h.score)}</b>${h.timeout ? ' <span class="muted">(время вышло)</span>' : ''}</td></tr>`).join('')}
+      </tbody></table></div><button class="link" id="clearHist">Очистить историю</button>` : '<p class="muted">Попыток пока нет. История хранится только в этом браузере.</p>'}
+  </section>`;
+}
+function bindHist(after) {
+  const ch = document.getElementById('clearHist');
+  if (ch) ch.onclick = () => ask('<p>Удалить историю попыток в этом браузере?</p>', [{ label: 'Удалить', cls: 'danger', fn: () => { store.del('krt.hist'); after(); } }, { label: 'Отмена' }]);
+}
 function renderHome() {
-  stopTimer(); bar.hidden = true; document.body.className = '';
-  const hist = store.get('krt.hist', []);
+  const g = (location.hash || '').slice(1);
+  if (GROUPS[g]) return renderGroup(g);
+  stopTimer(); bar.hidden = true; document.body.className = ''; main.onclick = main.onkeydown = null;
   main.innerHTML = `
   <section class="band">
     <h1>Подготовка к контрольным работам</h1>
     <p class="lede">Тренировочные варианты для 1 курса ФПИиКТ. Работа выполняется на время, после сдачи показываются баллы и разбор каждого задания.</p>
-    <div class="course">
-      <div class="c-info"><h2>Программирование. Контрольная работа №1</h2>
-        <p>Основы Java: ветвления, циклы, switch, строки, массивы, методы.</p>
-        <p class="meta">20 вопросов · ${CFG.progMinutes} минут · максимум 1.00 балла</p></div>
-      <div class="c-start"><label class="sr" for="vp">Вариант</label><select id="vp">${varOpts()}</select><button class="btn primary" data-start="prog">Начать попытку</button></div>
-    </div>
-    <div class="course">
-      <div class="c-info"><h2>ОПД. Рубежный контроль №1</h2>
-        <p>Задание 1: дерево каталогов, содержимое файлов и права доступа (в терминале).<br>Задание 2: перевод в 16-ю систему, сложение в 16-разрядном дополнительном коде, флаги C и V.</p>
-        <p class="meta">2 задания · ${CFG.opdMinutes} минут</p></div>
-      <div class="c-start"><label class="sr" for="vo">Вариант</label><select id="vo">${varOpts()}</select><button class="btn primary" data-start="opd">Начать попытку</button></div>
-    </div>
+    ${Object.keys(GROUPS).map(k => `<a class="course group" href="#${k}">
+      <div class="c-info"><h2>${esc(GROUPS[k].title)}</h2><p>${esc(GROUPS[k].about)}</p>
+      <p class="meta">${GROUPS[k].works.map(w => esc(COURSES[w].name)).join(' · ')}</p></div>
+      <span class="btn">Открыть</span></a>`).join('')}
     <p class="note">Варианты 1–20 всегда одинаковые, их удобно решать всей группой. Случайный вариант собирается заново при каждом запуске. Если время закончится, ответы сохранятся и работа будет сдана автоматически.</p>
-  </section>
-  <section class="band">
-    <h2>Мои попытки</h2>
-    ${hist.length ? `<div class="scroll"><table class="tbl"><thead><tr><th>Дата</th><th>Работа</th><th>Вариант</th><th class="num">Результат</th></tr></thead><tbody>
-      ${hist.slice().reverse().map(h => `<tr><td>${esc(dateStr(h.when))}</td><td>${esc(COURSES[h.course].title)}</td><td>${esc(h.label)}</td><td class="num"><b>${esc(h.score)}</b>${h.timeout ? ' <span class="muted">(время вышло)</span>' : ''}</td></tr>`).join('')}
-      </tbody></table></div><button class="link" id="clearHist">Очистить историю</button>` : '<p class="muted">Попыток пока нет. История хранится только в этом браузере.</p>'}
-  </section>`;
-  main.querySelectorAll('[data-start]').forEach(b => b.onclick = () => {
-    const c = b.dataset.start, v = document.getElementById(c === 'prog' ? 'vp' : 'vo').value;
-    startExam(c, v);
-  });
-  const ch = document.getElementById('clearHist');
-  if (ch) ch.onclick = () => ask('<p>Удалить историю попыток в этом браузере?</p>', [{ label: 'Удалить', cls: 'danger', fn: () => { store.del('krt.hist'); renderHome(); } }, { label: 'Отмена' }]);
+  </section>` + histTable();
+  bindHist(renderHome);
   window.scrollTo(0, 0);
 }
+function renderGroup(g) {
+  stopTimer(); bar.hidden = true; document.body.className = '';
+  main.onclick = main.onkeydown = null;
+  const G = GROUPS[g];
+  main.innerHTML = `
+  <section class="band">
+    <p class="crumbs"><a href="#">Главная</a> / ${esc(G.title)}</p>
+    <h1>${esc(G.title)}</h1>
+    ${G.works.map(w => { const C = COURSES[w]; return `<div class="course">
+      <div class="c-info"><h2>${esc(C.name)}</h2><p>${C.desc}</p><p class="meta">${esc(C.meta)}</p>
+      ${C.train ? `<label class="chk"><input type="checkbox" id="tr-${w}"> Режим обучения: проверка и подсказка по каждой строке во время решения</label>` : ''}</div>
+      <div class="c-start"><label class="sr" for="v-${w}">Вариант</label><select id="v-${w}">${varOpts()}</select><button class="btn primary" data-start="${w}">Начать попытку</button></div>
+    </div>`; }).join('')}
+  </section>` + histTable();
+  main.querySelectorAll('[data-start]').forEach(b => b.onclick = () => {
+    const c = b.dataset.start, tr = document.getElementById('tr-' + c);
+    startExam(c, document.getElementById('v-' + c).value, tr && tr.checked);
+  });
+  bindHist(() => renderGroup(g));
+  window.scrollTo(0, 0);
+}
+function goHome() { exam = null; store.del('krt.exam'); renderHome(); }
 
-function startExam(course, v) {
+function startExam(course, v, train) {
   const seed = v === 'r' ? (Math.floor(Math.random() * 4294967296) >>> 0) : GEN.hash(course + '-v' + v);
-  exam = { course, v, seed, label: v === 'r' ? 'Случайный вариант ' + seed.toString(36).toUpperCase() : 'Вариант ' + v, startedAt: Date.now(), dur: COURSES[course].min * 60000, answers: {}, term: [], sh: course === 'opd' ? SHELL.newState() : null };
+  exam = { course, v, seed, train: !!train, label: (v === 'r' ? 'Случайный вариант ' + seed.toString(36).toUpperCase() : 'Вариант ' + v) + (train ? ' (обучение)' : ''), startedAt: Date.now(), dur: COURSES[course].min * 60000, answers: {}, term: [], sh: course === 'opd' ? SHELL.newState() : null };
   save(); renderExam();
 }
 
@@ -1052,7 +1303,7 @@ function renderBar() {
     <div class="bar-prog" id="progress"></div>
     <button class="btn finish" id="finishBtn">Завершить</button><button class="link" id="quitBtn">Прервать попытку</button></div>`;
   document.getElementById('finishBtn').onclick = confirmFinish;
-  document.getElementById('quitBtn').onclick = () => ask('<p>Прервать попытку? Ответы не сохранятся и в историю не попадут.</p>', [{ label: 'Прервать', cls: 'danger', fn: () => { exam = null; store.del('krt.exam'); renderHome(); } }, { label: 'Продолжить' }]);
+  document.getElementById('quitBtn').onclick = () => ask('<p>Прервать попытку? Ответы не сохранятся и в историю не попадут.</p>', [{ label: 'Прервать', cls: 'danger', fn: () => { const g = COURSES[exam.course].group; exam = null; store.del('krt.exam'); location.hash = g; renderHome(); } }, { label: 'Продолжить' }]);
   stopTimer(); tick(); timerId = setInterval(tick, 500);
 }
 function confirmFinish() {
@@ -1062,6 +1313,7 @@ function confirmFinish() {
 function unanswered() {
   const a = exam.answers;
   if (exam.course === 'prog') return getData().filter((q, i) => { const x = a[i]; return x == null || x === '' || (Array.isArray(x) && !x.length); }).length;
+  if (exam.course === 'opd2') { const v = getData(); let n = a.f == null ? 1 : 0; v.rows.forEach((r, i) => BCOMP.COLS.forEach(c => { const x = (a.t || {})[i + c]; if (x == null || x === '') n++; })); return n; }
   return ['a', 'b', 's', 'C', 'V'].filter(k => a[k] == null || a[k] === '').length;
 }
 
@@ -1091,8 +1343,8 @@ function renderProg() {
 }
 function updProgress() {
   const p = document.getElementById('progress'); if (!p) return;
-  const total = exam.course === 'prog' ? getData().length : 5, done = total - unanswered();
-  p.textContent = 'Отвечено ' + done + ' из ' + total;
+  const total = exam.course === 'prog' ? getData().length : exam.course === 'opd2' ? getData().rows.length * 8 + 1 : 5, done = total - unanswered();
+  p.textContent = (exam.course === 'opd2' ? 'Заполнено ' : 'Отвечено ') + done + ' из ' + total;
 }
 
 /* ---------- экзамен: ОПД ---------- */
@@ -1186,10 +1438,82 @@ function setupTerm() {
   draw();
 }
 
+/* ---------- экзамен: ОПД РК2 ---------- */
+function traceTable(v, mode) { // mode: 'exam' | 'review'
+  const a = exam.answers, t = a.t || {}, shown = a.shown || {};
+  const head = '<tr><th>Адрес</th><th>Команда / данные</th>' + BCOMP.COLS.map(c => '<th>' + c + '</th>').join('') + (mode === 'exam' && exam.train ? '<th></th><th></th>' : '') + '</tr>';
+  const body = BCOMP.listing(v).map(r => {
+    if (r.data) return `<tr class="data"><td>${r.addr}</td><td>${r.text}</td>${BCOMP.COLS.map(() => '<td></td>').join('')}${mode === 'exam' && exam.train ? '<td></td><td></td>' : ''}</tr>`;
+    const i = r.i, exp = v.rows[i];
+    const cells = BCOMP.COLS.map(c => {
+      const val = t[i + c] || '';
+      if (mode === 'exam') return `<td><input class="tc" data-r="${i}" data-c="${c}" value="${esc(val)}" maxlength="${c === 'NZVC' ? 4 : 4}" autocomplete="off" spellcheck="false" aria-label="${c}, ${r.addr}"></td>`;
+      const ok = !shown[i] && BCOMP.checkCell(c, val, exp[c]);
+      return ok ? `<td class="cok">${esc(exp[c])}</td>` : `<td class="cbad"><s>${esc(val || '—')}</s><b>${esc(exp[c])}</b></td>`;
+    }).join('');
+    const btns = mode === 'exam' && exam.train ? `<td><button class="mini" data-check="${i}">Проверить</button></td><td><button class="mini" data-show="${i}">Показать</button></td>` : '';
+    return `<tr class="cmd${shown[i] ? ' shown' : ''}" id="row${i}"><td>${r.addr}</td><td class="mn">${esc(r.text)}</td>${cells}${btns}</tr>`;
+  }).join('');
+  return '<div class="scroll"><table class="trace">' + head + body + '</table></div>';
+}
+function renderOpd2() {
+  const v = getData(), a = exam.answers;
+  a.t = a.t || {}; a.shown = a.shown || {};
+  main.innerHTML = `<section class="band exam opd2">
+  <div class="sheet task">
+    <h2>Задание 1</h2>
+    <p>В памяти БЭВМ находятся программа и данные. Программа запускается с адреса, отмеченного знаком «+». Перед запуском AC = 0000, флаги C = 0, V = 0. Заполните таблицу трассировки: значения регистров <b>после выполнения</b> каждой команды.</p>
+    <p class="hint">IP, AR, SP — три шестнадцатеричные цифры, CR, DR, BR, AC — четыре. NZVC — четыре бита, например <code>1001</code> (можно и в виде <code>N--C</code>).</p>
+    ${traceTable(v, 'exam')}
+  </div>
+  <div class="sheet task t2">
+    <h2>Задание 2</h2>
+    <p>Какую формулу вычисляет программа? A — ячейка ${BCOMP.hx(v.aA, 3)}, B — ячейка ${BCOMP.hx(v.aB, 3)}, результат C записывается в ячейку ${BCOMP.hx(v.aC, 3)}.</p>
+    <div class="opts">${v.options.list.map((o, j) => `<label class="opt"><input type="radio" name="f" data-f="${j}" ${a.f === j ? 'checked' : ''}><span>${esc(o)}</span></label>`).join('')}</div>
+  </div>
+  <div class="endrow"><button class="btn primary" id="finish2">Завершить попытку</button></div>
+  </section>`;
+  main.oninput = main.onchange = e => {
+    const el = e.target;
+    if (el.dataset.f != null) { a.f = +el.dataset.f; }
+    else if (el.dataset.r != null) { el.value = el.value.toUpperCase(); a.t[el.dataset.r + el.dataset.c] = el.value; el.classList.remove('ok', 'bad'); }
+    else return;
+    save(); updProgress();
+  };
+  main.onkeydown = e => {
+    const el = e.target; if (el.dataset.r == null) return;
+    const i = +el.dataset.r, k = BCOMP.COLS.indexOf(el.dataset.c);
+    let ni = i, nk = k;
+    if (e.key === 'Enter' || (e.key === 'ArrowRight' && el.selectionStart === el.value.length)) nk++;
+    else if (e.key === 'ArrowLeft' && el.selectionStart === 0) nk--;
+    else if (e.key === 'ArrowDown') ni++; else if (e.key === 'ArrowUp') ni--; else return;
+    if (nk >= BCOMP.COLS.length) { nk = 0; ni++; } if (nk < 0) { nk = BCOMP.COLS.length - 1; ni--; }
+    const nx = main.querySelector(`input[data-r="${ni}"][data-c="${BCOMP.COLS[nk]}"]`);
+    if (nx) { e.preventDefault(); nx.focus(); nx.select(); }
+  };
+  main.onclick = e => {
+    const c = e.target.dataset && (e.target.dataset.check ?? e.target.dataset.show);
+    if (c == null) return;
+    const i = +c, exp = v.rows[i];
+    if (e.target.dataset.show != null) { BCOMP.COLS.forEach(col => { a.t[i + col] = exp[col]; }); a.shown[i] = true; save(); renderOpd2(); updProgress(); return; }
+    BCOMP.COLS.forEach(col => { const inp = main.querySelector(`input[data-r="${i}"][data-c="${col}"]`); const ok = BCOMP.checkCell(col, a.t[i + col], exp[col]); inp.classList.toggle('ok', ok); inp.classList.toggle('bad', !ok); });
+  };
+  document.getElementById('finish2').onclick = confirmFinish;
+  updProgress();
+}
+function gradeOpd2() {
+  const v = getData(), a = exam.answers, t = a.t || {}, shown = a.shown || {};
+  let ok = 0, tot = 0;
+  v.rows.forEach((r, i) => BCOMP.COLS.forEach(c => { tot++; if (!shown[i] && BCOMP.checkCell(c, t[i + c], r[c])) ok++; }));
+  const t1 = ok / tot, t2 = a.f === v.options.correct ? 1 : 0;
+  return { ok, tot, t1, t2, total: 0.8 * t1 + 0.2 * t2 };
+}
+
 function renderExam() {
+  main.onclick = main.onkeydown = null;
   if (exam.finishedAt) return renderResult();
   renderBar();
-  if (exam.course === 'prog') renderProg(); else renderOpd();
+  if (exam.course === 'prog') renderProg(); else if (exam.course === 'opd2') renderOpd2(); else renderOpd();
   window.scrollTo(0, 0);
 }
 
@@ -1216,7 +1540,7 @@ function finish(timeout) {
   exam.finishedAt = Math.min(Date.now(), exam.startedAt + exam.dur); exam.timeout = !!timeout; save();
   let score;
   if (exam.course === 'prog') { const g = gradeProg(); score = g.score.toFixed(2) + ' / ' + g.max.toFixed(2); }
-  else score = pct(gradeOpd().total);
+  else score = pct((exam.course === 'opd2' ? gradeOpd2() : gradeOpd()).total);
   const hist = store.get('krt.hist', []); hist.push({ course: exam.course, label: exam.label, score, when: exam.finishedAt, timeout: exam.timeout });
   store.set('krt.hist', hist.slice(-50));
   renderResult();
@@ -1229,6 +1553,7 @@ function resultHead(big, sub) {
    <div class="res-btns"><button class="btn primary" id="again">Новая попытка</button><button class="btn" id="home">На главную</button></div></div>`;
 }
 function renderResult() {
+  main.onclick = main.onkeydown = main.oninput = main.onchange = null;
   stopTimer(); bar.hidden = true; document.body.className = '';
   let html = '';
   if (exam.course === 'prog') {
@@ -1245,6 +1570,14 @@ function renderResult() {
           ${q.code ? `<pre class="code">${esc(q.code)}</pre>` : ''}${q.call ? `<p class="call">${esc(q.call)}</p>` : ''}<p class="pts got">Полученные баллы за вопрос ${(gr * q.pts).toFixed(2)}/${q.pts.toFixed(2)}</p>${body}
           ${q.explain ? `<p class="explain">${esc(q.explain)}</p>` : ''}</li>`;
       }).join('') + '</ol></div>';
+  } else if (exam.course === 'opd2') {
+    const v = getData(), g = gradeOpd2(), a = exam.answers, nShown = Object.keys(a.shown || {}).length;
+    html = resultHead(pct(g.total), 'Задание 1: <b>' + pct(g.t1) + '</b> (' + g.ok + ' из ' + g.tot + ' ячеек), задание 2: <b>' + (g.t2 ? 'верно' : 'неверно') + '</b>' + (nShown ? '<br><span class="muted">Строк, открытых кнопкой «Показать»: ' + nShown + ' (они не засчитываются)</span>' : '')) +
+      `<div class="sheet task"><h2>Задание 1</h2><p class="muted">Зелёным — верно; красным — ваше значение зачёркнуто, рядом правильное.</p>${traceTable(v, 'review')}
+       <h3>Разбор по командам</h3><ol class="expl">${v.prog.map((p, i) => '<li>' + esc(BCOMP.explain(v, i)) + '</li>').join('')}</ol></div>
+       <div class="sheet task"><h2>Задание 2</h2>
+       <ul class="olist">${v.options.list.map((o, j) => `<li class="${j === v.options.correct ? 'right' : ''} ${a.f === j ? 'chosen' : ''}">${esc(o)}${a.f === j ? ' <span class="mk">ваш выбор</span>' : ''}</li>`).join('')}</ul>
+       <p class="explain">Значение AC после каждой команды: ${v.prog.map((p, i) => v.forms[i] ? esc(p.mn + (p.arg != null ? ' ' + BCOMP.hx(p.arg, 3) : '') + ' → ' + v.forms[i]) : '').filter(Boolean).join('; ')}.</p></div>`;
   } else {
     const d = getData(), g = gradeOpd();
     const bad = g.items.filter(i => !i.ok);
@@ -1261,8 +1594,8 @@ function renderResult() {
        </tbody></table></div><h3>Разбор</h3><pre class="code">${esc(GEN.explainFlags(d.A, d.B))}</pre></div>`;
   }
   main.innerHTML = '<section class="band result' + (exam.course === 'opd' ? ' opd-res' : '') + '">' + html + '</section>';
-  document.getElementById('home').onclick = () => { exam = null; store.del('krt.exam'); renderHome(); };
-  document.getElementById('again').onclick = () => startExam(exam.course, 'r');
+  document.getElementById('home').onclick = () => { const g = COURSES[exam.course].group; exam = null; store.del('krt.exam'); location.hash = g; renderHome(); };
+  document.getElementById('again').onclick = () => startExam(exam.course, 'r', exam.train);
   const ob = document.getElementById('onlyBad');
   if (ob) { const tb = document.getElementById('chkTbl'); const f = () => tb.classList.toggle('only-bad', ob.checked); ob.onchange = f; f(); }
   const cs = document.getElementById('copySol');
@@ -1273,7 +1606,8 @@ function renderResult() {
 /* ---------- старт ---------- */
 const don = document.getElementById('donate');
 if (CFG.donateUrl) { don.href = CFG.donateUrl; don.textContent = CFG.donateText; don.hidden = false; }
-document.getElementById('logo').onclick = e => { e.preventDefault(); if (exam && !exam.finishedAt) return; exam = null; store.del('krt.exam'); renderHome(); };
+document.getElementById('logo').onclick = e => { e.preventDefault(); if (exam && !exam.finishedAt) return; exam = null; store.del('krt.exam'); history.replaceState(null, '', location.pathname); renderHome(); };
+window.addEventListener('hashchange', () => { if (!exam) renderHome(); });
 if (exam && !exam.finishedAt && Date.now() >= exam.startedAt + exam.dur) finish(true);
 else if (exam) renderExam();
 else renderHome();
