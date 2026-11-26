@@ -73,7 +73,7 @@ function renderHome() {
   main.innerHTML = `
   <section class="band">
     <h1>Подготовка к контрольным работам</h1>
-    <p class="lede">Тренировочные варианты для 1 курса ФПИиКТ. Работа выполняется на время, после сдачи показываются баллы и разбор каждого задания.</p>
+    <p class="lede">Тренировочные варианты для 1 курса ФПИиКТ.</p>
     ${Object.keys(GROUPS).map(k => `<a class="course group" href="#${k}">
       <div class="c-info"><h2>${esc(GROUPS[k].title)}</h2><p>${esc(GROUPS[k].about)}</p>
       <p class="meta">${GROUPS[k].works.map(w => esc(COURSES[w].name)).join(' · ')}</p></div>
