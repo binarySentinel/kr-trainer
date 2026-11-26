@@ -428,7 +428,8 @@ function buildTree(R) {
     const fill = (p, depth) => {
       const k = R.int(2, 3);
       for (let j = 0; j < k; j++) {
-        if (depth < 3 && R.chance(depth === 1 ? 0.55 : 0.45)) { const q = p + '/' + nm(); nodes.push({ path: q, type: 'd' }); fill(q, depth + 1); }
+        if (depth < 3 && R.chance(depth === 1 ? 0.5 : 0.4)) { const q = p + '/' + nm(); nodes.push({ path: q, type: 'd' }); fill(q, depth + 1); }
+        else if (R.chance(0.25)) nodes.push({ path: p + '/' + nm(), type: 'd' }); // пустой каталог
         else file(p);
       }
     };
@@ -437,7 +438,9 @@ function buildTree(R) {
     const seg = n => n.path.split('/').length;
     const deepDirs = nodes.filter(n => n.type === 'd' && seg(n) >= 4).length;
     const midDirs = nodes.filter(n => n.type === 'd' && seg(n) >= 3).length;
-    if (nodes.length < 18 || nodes.length > 26 || deepDirs < 1 || midDirs < 3) continue;
+    const isEmpty = d => !nodes.some(x => x.path.startsWith(d.path + '/'));
+    const empty = nodes.filter(n => n.type === 'd' && isEmpty(n)), emptyDeep = empty.filter(n => seg(n) >= 3).length;
+    if (nodes.length < 18 || nodes.length > 26 || deepDirs < 1 || midDirs < 3 || empty.length < 2 || empty.length > 4 || emptyDeep < 1) continue;
     nodes.forEach(n => {
       if (n.path === 'lab0') return;
       let m;
