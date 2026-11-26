@@ -30,6 +30,8 @@ const COURSES = {
     desc: 'ООП в Java: принципы SOLID, переопределение и перегрузка методов, полиморфизм, вложенные классы, порядок инициализации, исключения, enum, record, интерфейсы.', meta: '20 вопросов · 30 минут · максимум 1.00 балла' },
   prog3: { group: 'prog', title: 'Программирование', name: 'Контрольная работа №3', short: 'КР №3', min: 20,
     desc: 'Потоки ввода-вывода java.io, коллекции, функциональные интерфейсы и лямбды, JavaFX, локализация (ResourceBundle), состояния потоков, сетевые классы, Stream API, паттерны проектирования.', meta: '10 вопросов · 20 минут · максимум 20 баллов' },
+  opd3: { group: 'opd', title: 'ОПД', name: 'Рубежный контроль №3', short: 'РК №3', min: 90,
+    desc: 'Программа на ассемблере БЭВМ для обработки массива: 32-битные значения, расширение знака, функция от элементов или агрегирование (сумма, минимум/максимум, логические операции). Редактор с компиляцией и пошаговым выполнением, проверка на скрытых тестах.', meta: '1 задание · 90 минут' },
   opd4: { group: 'opd', title: 'ОПД', name: 'Рубежный контроль №4', short: 'РК №4', min: 60,
     desc: 'Трассировка микропрограммы: выполнение одной команды БЭВМ по микрокомандам. Для каждой микрокоманды — её адрес, содержимое MR, значения регистров, флаги и адрес следующей микрокоманды.', meta: '1 задание · 60 минут', train: true },
   opd: { group: 'opd', title: 'ОПД', name: 'Рубежный контроль №1', short: 'РК №1', min: CFG.opdMinutes,
@@ -42,7 +44,7 @@ let data = null, dataKey = '', timerId = null, shell = null;
 
 function getData() {
   const key = exam.course + ':' + exam.seed;
-  if (key !== dataKey) { data = exam.course === 'prog' ? GEN.buildProg(exam.seed) : exam.course === 'prog2' ? KR2.build(exam.seed) : exam.course === 'prog3' ? KR3.build(exam.seed) : exam.course === 'opd2' ? BCOMP.buildVariant(exam.seed) : exam.course === 'opd4' ? MC.build(exam.seed) : GEN.buildOpd(exam.seed); dataKey = key; }
+  if (key !== dataKey) { data = exam.course === 'prog' ? GEN.buildProg(exam.seed) : exam.course === 'prog2' ? KR2.build(exam.seed) : exam.course === 'prog3' ? KR3.build(exam.seed) : exam.course === 'opd2' ? BCOMP.buildVariant(exam.seed) : exam.course === 'opd4' ? MC.build(exam.seed) : exam.course === 'opd3' ? RK3.build(exam.seed) : GEN.buildOpd(exam.seed); dataKey = key; }
   return data;
 }
 function save() { store.set('krt.exam', exam); }
@@ -162,6 +164,7 @@ function confirmFinish() {
 function unanswered() {
   const a = exam.answers;
   if (['prog', 'prog2', 'prog3'].includes(exam.course)) return getData().filter((q, i) => { const x = a[i]; return x == null || x === '' || (Array.isArray(x) && !x.length) || (q.type === 'cats' && Object.values(x).filter(Boolean).length < q.items.length); }).length;
+  if (exam.course === 'opd3') return (a.code || '').trim() ? 0 : 1;
   if (exam.course === 'opd4') { const v = getData(), m = a.m || {}; let n = 0; v.rows.forEach((r, i) => MC.COLS.forEach(c => { if (!m[i + '|' + c]) n++; })); return n; }
   if (exam.course === 'opd2') { const v = getData(); let n = a.f == null ? 1 : 0; v.rows.forEach((r, i) => BCOMP.COLS.forEach(c => { const x = (a.t || {})[i + c]; if (x == null || x === '') n++; })); return n; }
   return ['a', 'b', 's', 'C', 'V'].filter(k => a[k] == null || a[k] === '').length;
@@ -195,7 +198,8 @@ function renderProg() {
 }
 function updProgress() {
   const p = document.getElementById('progress'); if (!p) return;
-  const total = ['prog', 'prog2', 'prog3'].includes(exam.course) ? getData().length : exam.course === 'opd2' ? getData().rows.length * 8 + 1 : exam.course === 'opd4' ? getData().rows.length * MC.COLS.length : 5, done = total - unanswered();
+  const total = ['prog', 'prog2', 'prog3'].includes(exam.course) ? getData().length : exam.course === 'opd2' ? getData().rows.length * 8 + 1 : exam.course === 'opd4' ? getData().rows.length * MC.COLS.length : exam.course === 'opd3' ? 1 : 5, done = total - unanswered();
+  if (exam.course === 'opd3') { p.textContent = (exam.answers.code || '').trim() ? 'Код сохранён' : 'Код не написан'; return; }
   p.textContent = (exam.course === 'opd2' || exam.course === 'opd4' ? 'Заполнено ' : 'Отвечено ') + done + ' из ' + total;
 }
 
@@ -463,11 +467,90 @@ function gradeOpd4() {
   return { ok, tot, total: ok / tot };
 }
 
+/* ---------- РК3: редактор ассемблера ---------- */
+let vm = null, vmProg = null;
+function renderOpd3() {
+  const t = getData(), a = exam.answers;
+  if (a.code == null) a.code = '';
+  main.innerHTML = `<section class="band exam opd3">
+  <div class="sheet task">
+    <h2>Задание 1</h2>
+    <pre class="tasktext">${esc(t.text)}</pre>
+    <p class="hint">Программа проверяется на нескольких наборах данных: перед запуском в память по адресу ${'0x' + t.base.toString(16)} записывается проверочный массив (ваши тестовые данные в этой области будут заменены), затем программа запускается с метки START (если её нет — с первого слова программы) и должна остановиться командой HLT.</p>
+    <div class="asmbtns"><button class="btn primary" id="aComp">Компилировать</button><button class="btn primary" id="aRun">Пуск</button><button class="btn primary" id="aCont">Продолжение</button><button class="btn primary" disabled>Стоп</button><button class="btn primary" id="aStep">Шаг вперед</button></div>
+    <div class="asmmsg" id="aMsg" hidden></div>
+    <div class="asmgrid">
+      <div class="editor"><div class="gut" id="aGut"></div><div class="edwrap"><div class="hl" id="aHl" hidden></div><textarea id="aSrc" spellcheck="false" autocomplete="off" wrap="off" aria-label="Код программы">${esc(a.code)}</textarea></div></div>
+      <div class="memside"><div class="regs" id="aRegs"></div><div class="memwrap" id="aMem"></div></div>
+    </div>
+  </div>
+  <div class="endrow"><button class="btn primary" id="finish2">Завершить попытку</button></div>
+  </section>`;
+  const src = document.getElementById('aSrc'), gut = document.getElementById('aGut'), hl = document.getElementById('aHl'), msg = document.getElementById('aMsg');
+  const lh = () => parseFloat(getComputedStyle(src).lineHeight) || 20;
+  const gutter = () => { const n = src.value.split('\n').length; gut.innerHTML = Array.from({ length: Math.max(n, 30) }, (_, i) => `<div id="gl${i + 1}">${i + 1}</div>`).join(''); gut.scrollTop = src.scrollTop; };
+  const say = (text, kind) => { msg.hidden = !text; msg.textContent = text || ''; msg.className = 'asmmsg ' + (kind || ''); };
+  const showLine = () => {
+    gut.querySelectorAll('.cur').forEach(x => x.classList.remove('cur'));
+    const ln = vm && vmProg ? vmProg.lines.get(vm.IP) : null;
+    if (!ln) { hl.hidden = true; return; }
+    hl.hidden = false; hl.style.top = ((ln - 1) * lh() + 6 - src.scrollTop) + 'px'; hl.style.height = lh() + 'px';
+    const g = document.getElementById('gl' + ln); if (g) g.classList.add('cur');
+    const y = (ln - 1) * lh(); if (y < src.scrollTop || y > src.scrollTop + src.clientHeight - 2 * lh()) { src.scrollTop = Math.max(0, y - src.clientHeight / 3); gut.scrollTop = src.scrollTop; hl.style.top = ((ln - 1) * lh() + 6 - src.scrollTop) + 'px'; }
+  };
+  const regs = () => {
+    const H = RK3.H, s = vm || { IP: 0, AC: 0, PS: 0, CR: 0, AR: 0, DR: 0, SP: 0, BR: 0 };
+    document.getElementById('aRegs').innerHTML = `<span><b>IP:</b> ${H(s.IP, 3)}</span><span><b>AC:</b> ${H(s.AC, 4)}</span><span><b>NZVC:</b> ${MC.nzvc(s.PS)}</span><span class="muted">CR ${H(s.CR, 4)} · AR ${H(s.AR, 3)} · DR ${H(s.DR, 4)} · SP ${H(s.SP, 3)} · BR ${H(s.BR, 4)}</span>`;
+  };
+  const memView = scroll => {
+    const box = document.getElementById('aMem'), H = RK3.H, m = vm ? vm.mem : new Array(2048).fill(0);
+    let html = '<table class="mem"><tr><th></th>' + Array.from({ length: 16 }, (_, i) => '<th>' + H(i, 3).toLowerCase() + '</th>').join('') + '</tr>';
+    for (let r = 0; r < 128; r++) {
+      html += '<tr><th>' + H(r * 16, 3).toLowerCase() + '</th>';
+      for (let c = 0; c < 16; c++) { const ad = r * 16 + c, v = m[ad]; const cls = vm && ad === vm.IP ? 'ip' : vm && ad === vm.AR ? 'ar' : v ? 'nz' : ''; html += `<td class="${cls}">${H(v, 4).toLowerCase()}</td>`; }
+      html += '</tr>';
+    }
+    box.innerHTML = html + '</table>';
+    if (scroll && vm) { const rowH = box.querySelector('td').offsetHeight || 22, target = Math.floor((vm.IP) / 16); box.scrollTop = Math.max(0, (target - 3) * rowH); }
+  };
+  const compile = () => {
+    try { vmProg = ASM.assemble(src.value); vm = ASM.machine(vmProg); say('Программа загружена в память, IP = ' + RK3.H(vm.IP, 3) + '. Ответ сохранён.', 'ok'); }
+    catch (e) { if (!(e instanceof ASM.AsmError)) throw e; vm = null; vmProg = null; say('Ошибка компиляции. ' + e.message, 'err'); }
+    regs(); memView(true); showLine(); return !!vm;
+  };
+  const go = fresh => {
+    if (!vm) { if (!compile()) return; }
+    else if (fresh) { const ip = vmProg.start & 0x7FF, keep = vm.mem; vm = ASM.machine(null); vm.mem = keep; vm.IP = ip; }
+    if (vm.halted) { vm.halted = false; }
+    let n = 0; const LIM = 10000;
+    while (n < LIM && ASM.stepCmd(vm)) n++;
+    say(vm.halted ? 'Программа остановлена (выполнено команд: ' + vm.cmds + ').' : 'Выполнено ' + LIM + ' команд, программа не дошла до HLT и была прервана. Можно продолжить кнопкой «Продолжение».', vm.halted ? 'ok' : 'warn');
+    regs(); memView(true); showLine();
+  };
+  document.getElementById('aComp').onclick = compile;
+  document.getElementById('aRun').onclick = () => go(true);
+  document.getElementById('aCont').onclick = () => go(false);
+  document.getElementById('aStep').onclick = () => { if (!vm && !compile()) return; vm.halted = false; ASM.stepCmd(vm); if (vm.halted) say('Программа остановлена (выполнено команд: ' + vm.cmds + ').', 'ok'); regs(); memView(true); showLine(); };
+  src.oninput = () => { a.code = src.value; gutter(); save(); updProgress(); };
+  src.onscroll = () => { gut.scrollTop = src.scrollTop; showLine(); };
+  src.onkeydown = e => { if (e.key === 'Tab') { e.preventDefault(); const p = src.selectionStart; src.setRangeText('    ', p, src.selectionEnd, 'end'); src.oninput(); } };
+  vm = null; vmProg = null;
+  gutter(); regs(); memView(false);
+  document.getElementById('finish2').onclick = confirmFinish;
+  updProgress();
+}
+let opd3Cache = null;
+function gradeOpd3() {
+  const key = exam.seed + '|' + (exam.answers.code || '');
+  if (!opd3Cache || opd3Cache.key !== key) opd3Cache = { key, r: RK3.check(getData(), exam.answers.code || '') };
+  const r = opd3Cache.r; return Object.assign({ total: r.passed / getData().tests.length }, r);
+}
+
 function renderExam() {
   main.onclick = main.onkeydown = null;
   if (exam.finishedAt) return renderResult();
   renderBar();
-  if (exam.course === 'prog' || exam.course === 'prog3' || (exam.course === 'prog2' && !exam.train)) renderProg(); else if (exam.course === 'prog2') renderSlide(); else if (exam.course === 'opd2') renderOpd2(); else if (exam.course === 'opd4') renderOpd4(); else renderOpd();
+  if (exam.course === 'prog' || exam.course === 'prog3' || (exam.course === 'prog2' && !exam.train)) renderProg(); else if (exam.course === 'prog2') renderSlide(); else if (exam.course === 'opd2') renderOpd2(); else if (exam.course === 'opd4') renderOpd4(); else if (exam.course === 'opd3') renderOpd3(); else renderOpd();
   window.scrollTo(0, 0);
 }
 
@@ -495,7 +578,7 @@ function finish(timeout) {
   let score;
   if (exam.course === 'prog') { const g = gradeProg(); score = g.score.toFixed(2) + ' / ' + g.max.toFixed(2); }
   else if (exam.course === 'prog2' || exam.course === 'prog3') { const qs = getData(), tot = qs.reduce((t, q) => t + q.pts, 0); score = qs.reduce((t, q, i) => t + QL(exam.course).grade(q, exam.answers[i]) * q.pts, 0).toFixed(2) + ' / ' + tot.toFixed(2); }
-  else score = pct((exam.course === 'opd2' ? gradeOpd2() : exam.course === 'opd4' ? gradeOpd4() : gradeOpd()).total);
+  else score = pct((exam.course === 'opd2' ? gradeOpd2() : exam.course === 'opd4' ? gradeOpd4() : exam.course === 'opd3' ? gradeOpd3() : gradeOpd()).total);
   const hist = store.get('krt.hist', []); hist.push({ course: exam.course, label: exam.label, score, when: exam.finishedAt, timeout: exam.timeout });
   store.set('krt.hist', hist.slice(-50));
   renderResult();
@@ -541,6 +624,18 @@ function renderResult() {
           ${q.pre ? `<pre class="code">${esc(q.pre)}</pre>` : ''}${q.code ? `<pre class="code">${esc(q.code)}</pre>` : ''}<p class="pts got">Полученные баллы за вопрос ${(g * q.pts).toFixed(2)}/${q.pts.toFixed(2)}</p>${body}
           <p class="explain">${esc(q.explain)}</p></li>`;
       }).join('') + '</ol></div>';
+  } else if (exam.course === 'opd3') {
+    const t = getData(), g = gradeOpd3(), H = RK3.H;
+    const hexs = (ts, words) => RK3.pairs(words);
+    html = resultHead(pct(g.total), g.error ? 'Программа не компилируется: ' + esc(g.error) : 'Пройдено тестов: <b>' + g.passed + '</b> из ' + t.tests.length) +
+      `<div class="sheet task"><h2>Задание</h2><pre class="tasktext">${esc(t.text)}</pre>
+       ${t.tests.map((ts, k) => { const r = g.tests[k]; const exp = ts.expect.map(x => x[1]);
+         return `<div class="tcase ${r && r.ok ? 'ok' : 'bad'}"><h3>Тест ${k + 1}: ${r ? (r.ok ? 'пройден' : r.halted ? 'неверный результат' : 'программа не остановилась за ' + RK3.LIMIT + ' команд') : 'не выполнялся'}</h3>
+         <p class="muted">Массив (десятичные значения): ${ts.vals.join(', ')}</p>
+         <div class="scroll"><table class="trace tres"><tr><th>Адрес</th><th>Ожидалось</th><th>Получено</th></tr>${hexs(ts, exp).map((x, i) => { const got = r ? RK3.pairs(r.got)[i] : '—'; return `<tr><td>${H(0x400 + 2 * i, 3)}</td><td>${x}</td><td class="${got === x ? 'cok' : 'cbad'}">${got}</td></tr>`; }).join('')}</table></div>
+         <p class="hint">32-битные значения записаны как «старшее слово, младшее слово».${r ? ' Выполнено команд: ' + r.cmds + '.' : ''}</p></div>`; }).join('')}
+       <h3>Ваш код</h3><pre class="code">${esc(exam.answers.code || '(пусто)')}</pre>
+       <details class="mclist"><summary>Пример решения</summary><pre class="code">${esc(t.solution)}</pre></details></div>`;
   } else if (exam.course === 'opd4') {
     const v = getData(), g = gradeOpd4(), nShown = Object.keys(exam.answers.shown || {}).length;
     html = resultHead(pct(g.total), 'Верно заполнено ячеек: <b>' + g.ok + '</b> из ' + g.tot + (nShown ? '<br><span class="muted">Строк, открытых кнопкой «Показать»: ' + nShown + ' (они не засчитываются)</span>' : '')) +

@@ -143,6 +143,20 @@ footer{margin-top:30px}
 .slide-clock{display:grid;justify-items:end;gap:2px;font-size:13px}.slide-clock b{font:600 26px var(--mono);border:1px solid var(--line);border-radius:4px;padding:2px 10px}
 .exam .note{max-width:860px;margin:12px auto 0}
 .mct .tc.w10{width:118px}.mct .tc.w2{width:40px}.mclist{margin:10px 0}.mclist summary{cursor:pointer;color:var(--blue);font-weight:500}.mclist .scroll{max-height:420px;overflow:auto}
+.tasktext{background:var(--codebg);padding:14px 16px;border-radius:4px;white-space:pre-wrap;font-size:13.5px;line-height:1.55}
+.asmbtns{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0 10px}.asmbtns .btn[disabled]{opacity:.45;cursor:default}
+.asmmsg{padding:12px 14px;border-radius:4px;margin-bottom:12px;font-size:14px;background:#dfe6f3}.asmmsg.err,.asmmsg.warn{background:#f5edc4}
+.asmgrid{display:grid;grid-template-columns:minmax(280px,1fr) auto;gap:18px;align-items:start}
+.editor{display:flex;background:#2f343c;border-radius:4px;height:560px;overflow:hidden}
+.gut{width:44px;flex:none;overflow:hidden;padding:6px 0;text-align:right;color:#7d8590;font:13px/20px var(--mono);user-select:none}.gut div{padding-right:8px;height:20px}.gut .cur{color:#fff}
+.edwrap{position:relative;flex:1;min-width:0}.edwrap textarea{position:relative;z-index:1;width:100%;height:100%;resize:none;border:0;border-radius:0;background:transparent;color:#e3e6ea;font:13px/20px var(--mono);padding:6px 8px;white-space:pre;overflow:auto;tab-size:4;caret-color:#fff;outline:none}
+.hl{position:absolute;left:0;right:0;background:#2b5bd7;opacity:.55;pointer-events:none}
+.regs{display:flex;gap:18px;flex-wrap:wrap;font:14px var(--mono);margin:4px 0 10px;align-items:baseline}.regs .muted{font-size:12px}
+.memwrap{height:520px;overflow:auto;border:1px solid var(--line);background:#fff}
+table.mem{border-collapse:collapse;font:12px var(--mono)}table.mem th{position:sticky;top:0;background:#f0f2f5;padding:3px 4px;font-weight:600}table.mem tr th:first-child{position:sticky;left:0;z-index:1}
+table.mem td{padding:3px 4px;color:#9aa1a9}table.mem td.nz{color:#1d3f99;background:#eef3fd}table.mem td.ip{background:#2b5bd7;color:#fff}table.mem td.ar{background:#f7d774;color:#222}
+.tcase{border-left:4px solid var(--bad);padding:4px 0 4px 14px;margin:18px 0}.tcase.ok{border-color:var(--ok)}.tres td{padding:0 10px}
+@media(max-width:900px){.asmgrid{grid-template-columns:1fr}.editor{height:420px}.memwrap{height:360px}}
 .tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin:4px 0 18px}.tab{padding:10px 18px;text-decoration:none;color:var(--mut);border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500}.tab.on{color:var(--blue);border-bottom-color:var(--blue)}
 .cats{display:grid;gap:8px}.catrow{display:grid;grid-template-columns:minmax(0,1fr) 220px;gap:12px;align-items:center}.catrow select{width:100%}
 @media(max-width:600px){.catrow{grid-template-columns:1fr}}
@@ -168,6 +182,8 @@ footer{margin-top:30px}
 /*KR2*/
 /*KR3*/
 /*MC*/
+/*ASM*/
+/*RK3*/
 /*APP*/
 </script>
 </body>
