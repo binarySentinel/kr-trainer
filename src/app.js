@@ -200,7 +200,7 @@ function renderSlide() {
     ${q.type === 'multi' ? '<p class="pts">Отметьте все подходящие варианты</p>' : '<p class="pts">Введите ответ</p>'}
     ${inp}
     <div class="endrow"><button class="btn primary" id="nextQ">${last ? 'Завершить' : 'Следующий вопрос'}</button></div>
-  </div><p class="note">Как на рубежке: на каждый вопрос своё время, по его окончании вопрос сменится сам. Вернуться к прошлому вопросу нельзя.</p></section>`;
+  </div><p class="note">На каждый вопрос своё время, по его окончании вопрос сменится сам. Вернуться к прошлому вопросу нельзя.</p></section>`;
   main.oninput = main.onchange = e => {
     const el = e.target; if (!el.dataset || el.dataset.q == null) return;
     const k = +el.dataset.q;
