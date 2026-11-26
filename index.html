@@ -1046,38 +1046,36 @@ function buildVariant(seed) {
     const forms = [];
     const add = (mn, arg) => { prog.push({ mn, arg }); forms.push(null); };
     const snap = () => { forms[forms.length - 1] = linStr(lin); };
-    const first = pick(['CLA+ADD', 'CLA+OR', 'LD', 'LD', 'CLA+NOT+AND', 'CLA+NOT+AND', 'CLA+SUB']);
-    const v1 = pick(['A', 'B']), addr = x => x === 'A' ? aA : aB;
-    if (first === 'LD') { add('LD', addr(v1)); lin[v1.toLowerCase()] = 1; snap(); }
-    else if (first === 'CLA+NOT+AND') {
-      add('CLA'); snap(); add('NOT'); lin.c = -1; snap();
-      add('AND', addr(v1)); lin = { a: 0, b: 0, c: 0 }; lin[v1.toLowerCase()] = 1; snap();
-    } else {
-      add('CLA'); snap();
-      const mn = first.split('+')[1];
-      add(mn, addr(v1)); lin[v1.toLowerCase()] = mn === 'SUB' ? -1 : 1; snap();
+    const A_ = aA, B_ = aB;
+    const scale = k => { lin = { a: lin.a * k, b: lin.b * k, c: lin.c * k }; };
+    // 1) загрузка A
+    switch (pick(['LD', 'LD', 'CLA NOT AND', 'CLA NOT AND', 'CLA SUB NEG', 'CLA OR', 'CLA ADD'])) {
+      case 'LD': add('LD', A_); lin.a = 1; snap(); break;
+      case 'CLA NOT AND': add('CLA'); snap(); add('NOT'); lin.c = -1; snap(); add('AND', A_); lin = { a: 1, b: 0, c: 0 }; snap(); break;
+      case 'CLA SUB NEG': add('CLA'); snap(); add('SUB', A_); lin.a = -1; snap(); add('NEG'); lin.a = 1; snap(); break;
+      case 'CLA OR': add('CLA'); snap(); add('OR', A_); lin.a = 1; snap(); break;
+      default: add('CLA'); snap(); add('ADD', A_); lin.a = 1; snap();
     }
-    const n = int(4, 7);
-    const pool = ['ADD A', 'ADD B', 'SUB A', 'SUB B', 'ASL', 'ASL', 'CLC ROL', 'NOT', 'NOT INC', 'INC', 'DEC', 'NEG'];
-    let prev = '';
-    for (let i = 0; i < n; i++) {
-      let o; do { o = pick(pool); } while ((o === prev && o !== 'ASL') || (o === 'INC' && prev === 'DEC') || (o === 'DEC' && prev === 'INC') || (o === 'NEG' && prev === 'NEG') || (o.startsWith('NOT') && prev.startsWith('NOT')));
-      prev = o;
-      if (o === 'CLC ROL') { add('CLC'); snap(); add('ROL'); lin = { a: lin.a * 2, b: lin.b * 2, c: lin.c * 2 }; snap(); continue; }
-      if (o === 'NOT INC') { add('NOT'); lin = { a: -lin.a, b: -lin.b, c: -lin.c - 1 }; snap(); add('INC'); lin.c += 1; snap(); continue; }
-      const [mn, v] = o.split(' ');
-      if (v) { add(mn, addr(v)); lin[v.toLowerCase()] += mn === 'ADD' ? 1 : -1; snap(); }
-      else {
-        add(mn);
-        if (mn === 'ASL') lin = { a: lin.a * 2, b: lin.b * 2, c: lin.c * 2 };
-        else if (mn === 'NOT') lin = { a: -lin.a, b: -lin.b, c: -lin.c - 1 };
-        else if (mn === 'NEG') lin = { a: -lin.a, b: -lin.b, c: -lin.c };
-        else if (mn === 'INC') lin.c += 1; else if (mn === 'DEC') lin.c -= 1;
-        snap();
-      }
-    }
+    // 2) умножение A
+    const dbl = () => { if (r() < 0.5) { add('ASL'); scale(2); snap(); } else { add('CLC'); snap(); add('ROL'); scale(2); snap(); } };
+    const addA = () => { add('ADD', A_); lin.a += 1; snap(); };
+    const mul = pick(['x2', 'x2', 'x3', 'x4', 'x5', 'x4']);
+    if (mul === 'x2') dbl();
+    else if (mul === 'x3') { dbl(); addA(); }
+    else if (mul === 'x4') { dbl(); dbl(); }
+    else { dbl(); dbl(); addA(); }
+    // 3) смена знака (не всегда)
+    const sg = pick(['none', 'NOT INC', 'NOT INC', 'NEG', 'NOT']);
+    if (sg === 'NOT INC') { add('NOT'); lin = { a: -lin.a, b: -lin.b, c: -lin.c - 1 }; snap(); add('INC'); lin.c += 1; snap(); }
+    else if (sg === 'NEG') { add('NEG'); lin = { a: -lin.a, b: -lin.b, c: -lin.c }; snap(); }
+    else if (sg === 'NOT') { add('NOT'); lin = { a: -lin.a, b: -lin.b, c: -lin.c - 1 }; snap(); }
+    // 4) B один раз
+    if (r() < 0.5) { add('ADD', B_); lin.b += 1; } else { add('SUB', B_); lin.b -= 1; } snap();
+    // 5) ±1
+    const pm = sg === 'NOT' ? pick(['INC', 'DEC', 'none']) : pick(['INC', 'DEC', 'DEC', 'none']);
+    if (pm === 'INC') { add('INC'); lin.c += 1; snap(); } else if (pm === 'DEC') { add('DEC'); lin.c -= 1; snap(); }
     add('ST', aC); forms[forms.length - 1] = 'C = ' + linStr(lin); add('HLT');
-    if (lin.a === 0 || lin.b === 0 || Math.abs(lin.a) > 8 || Math.abs(lin.b) > 8 || Math.abs(lin.c) > 6) continue;
+    if (lin.a === 0 || lin.b === 0 || prog.length < 8) continue;
     const A = int(0, M16), B = int(0, M16), C0 = int(0, M16);
     const mem = {}; mem[aA] = A; mem[aB] = B; mem[aC] = C0;
     prog.forEach((p, i) => { mem[start + i] = encode(p.mn, p.arg); });
@@ -1085,7 +1083,7 @@ function buildVariant(seed) {
     const st = { mem, IP: start, AC: 0, N: 0, Z: 1, V: 0, C: 0, SP: 0 };
     const rows = prog.map(() => step(st));
     // хотя бы один флаг V или C должен «сработать» — иначе вариант слишком простой
-    if (!rows.some(x => x.NZVC[2] === '1' || x.NZVC[3] === '1')) continue;
+    if (attempt < 20 && !rows.some(x => x.NZVC[2] === '1' || x.NZVC[3] === '1')) continue;
     const formula = fmtLin(lin);
     return { forms, base, aA, aB, aC, start, prog, memInit, rows: rows.map(fmtRow), raw: rows, lin, formula, options: formulaOptions(lin, r), A, B, C0, final: mem[aC] };
   }
