@@ -18,14 +18,18 @@ const store = {
   del(k) { try { localStorage.removeItem(k); } catch (e) { } }
 };
 const GROUPS = {
-  prog: { title: 'Программирование', about: 'Контрольные работы по Java.', works: ['prog', 'prog2'] },
-  opd: { title: 'ОПД', about: 'Основы профессиональной деятельности: рубежные контроли.', works: ['opd', 'opd2'] }
+  prog: { title: 'Программирование', about: 'Контрольные работы по Java.', sems: [['prog', 'prog2'], ['prog3']] },
+  opd: { title: 'ОПД', about: 'Основы профессиональной деятельности: рубежные контроли.', sems: [['opd', 'opd2'], ['opd3', 'opd4']] }
 };
+const QL = c => c === 'prog3' ? KR3 : KR2;
+const semWorks = g => GROUPS[g].sems.map(ws => ws.filter(w => COURSES[w]));
 const COURSES = {
   prog: { group: 'prog', title: 'Программирование', name: 'Контрольная работа №1', short: 'КР №1', min: CFG.progMinutes,
     desc: 'Основы Java: ветвления, циклы, switch, строки, массивы, методы.', meta: '20 вопросов · ' + CFG.progMinutes + ' минут · максимум 1.00 балла' },
   prog2: { group: 'prog', title: 'Программирование', name: 'Контрольная работа №2', short: 'КР №2', min: 30,
     desc: 'ООП в Java: принципы SOLID, переопределение и перегрузка методов, полиморфизм, вложенные классы, порядок инициализации, исключения, enum, record, интерфейсы.', meta: '20 вопросов · 30 минут · максимум 1.00 балла' },
+  prog3: { group: 'prog', title: 'Программирование', name: 'Контрольная работа №3', short: 'КР №3', min: 20,
+    desc: 'Потоки ввода-вывода java.io, коллекции, функциональные интерфейсы и лямбды, JavaFX, локализация (ResourceBundle), состояния потоков, сетевые классы, Stream API, паттерны проектирования.', meta: '10 вопросов · 20 минут · максимум 20 баллов' },
   opd: { group: 'opd', title: 'ОПД', name: 'Рубежный контроль №1', short: 'РК №1', min: CFG.opdMinutes,
     desc: 'Задание 1: дерево каталогов, содержимое файлов и права доступа (в терминале).<br>Задание 2: перевод в 16-ю систему, сложение в 16-разрядном дополнительном коде, флаги C и V.', meta: '2 задания · ' + CFG.opdMinutes + ' минут' },
   opd2: { group: 'opd', title: 'ОПД', name: 'Рубежный контроль №2', short: 'РК №2', min: CFG.opd2Minutes,
@@ -36,7 +40,7 @@ let data = null, dataKey = '', timerId = null, shell = null;
 
 function getData() {
   const key = exam.course + ':' + exam.seed;
-  if (key !== dataKey) { data = exam.course === 'prog' ? GEN.buildProg(exam.seed) : exam.course === 'prog2' ? KR2.build(exam.seed) : exam.course === 'opd2' ? BCOMP.buildVariant(exam.seed) : GEN.buildOpd(exam.seed); dataKey = key; }
+  if (key !== dataKey) { data = exam.course === 'prog' ? GEN.buildProg(exam.seed) : exam.course === 'prog2' ? KR2.build(exam.seed) : exam.course === 'prog3' ? KR3.build(exam.seed) : exam.course === 'opd2' ? BCOMP.buildVariant(exam.seed) : GEN.buildOpd(exam.seed); dataKey = key; }
   return data;
 }
 function save() { store.set('krt.exam', exam); }
@@ -70,8 +74,8 @@ function bindHist(after) {
   if (ch) ch.onclick = () => ask('<p>Удалить историю попыток в этом браузере?</p>', [{ label: 'Удалить', cls: 'danger', fn: () => { store.del('krt.hist'); after(); } }, { label: 'Отмена' }]);
 }
 function renderHome() {
-  const g = (location.hash || '').slice(1);
-  if (GROUPS[g]) return renderGroup(g);
+  const h = (location.hash || '').slice(1), g = h.split('-')[0];
+  if (GROUPS[g]) return renderGroup(g, h.endsWith('-2') ? 1 : 0);
   stopTimer(); bar.hidden = true; document.body.className = ''; main.onclick = main.onkeydown = null;
   main.innerHTML = `
   <section class="band">
@@ -79,22 +83,24 @@ function renderHome() {
     <p class="lede">Тренировочные варианты для 1 курса ФПИиКТ.</p>
     ${Object.keys(GROUPS).map(k => `<a class="course group" href="#${k}">
       <div class="c-info"><h2>${esc(GROUPS[k].title)}</h2><p>${esc(GROUPS[k].about)}</p>
-      <p class="meta">${GROUPS[k].works.map(w => esc(COURSES[w].name)).join(' · ')}</p></div>
+      <p class="meta">${semWorks(k).map((ws, i) => (i + 1) + ' семестр: ' + (ws.length ? ws.map(w => esc(COURSES[w].short)).join(', ') : 'скоро')).join(' · ')}</p></div>
       <span class="btn primary">Открыть</span></a>`).join('')}
     <p class="note">Варианты 1–20 всегда одинаковые. Случайный вариант собирается заново при каждом запуске. Если время закончится, ответы сохранятся и работа будет сдана автоматически.</p>
   </section>` + histTable();
   bindHist(renderHome);
   window.scrollTo(0, 0);
 }
-function renderGroup(g) {
+function renderGroup(g, sem) {
   stopTimer(); bar.hidden = true; document.body.className = '';
   main.onclick = main.onkeydown = null;
-  const G = GROUPS[g];
+  const G = GROUPS[g], works = semWorks(g)[sem];
   main.innerHTML = `
   <section class="band">
     <p class="crumbs"><a href="#">Главная</a> / ${esc(G.title)}</p>
     <h1>${esc(G.title)}</h1>
-    ${G.works.map(w => { const C = COURSES[w]; return `<div class="course">
+    <nav class="tabs">${G.sems.map((x, i) => `<a href="#${g}-${i + 1}" class="tab${i === sem ? ' on' : ''}">${i + 1} семестр</a>`).join('')}</nav>
+    ${works.length ? '' : '<p class="muted">Скоро.</p>'}
+    ${works.map(w => { const C = COURSES[w]; return `<div class="course">
       <div class="c-info"><h2>${esc(C.name)}</h2><p>${C.desc}</p><p class="meta">${esc(C.meta)}</p>
       ${C.train ? `<label class="chk"><input type="checkbox" id="tr-${w}"> ${C.trainText || 'Режим обучения: проверка и подсказка по каждой строке во время решения'}</label>` : ''}</div>
       <div class="c-start"><label class="sr" for="v-${w}">Вариант</label><select id="v-${w}">${varOpts()}</select><button class="btn primary" data-start="${w}">Начать попытку</button></div>
@@ -104,7 +110,7 @@ function renderGroup(g) {
     const c = b.dataset.start, tr = document.getElementById('tr-' + c);
     startExam(c, document.getElementById('v-' + c).value, tr && tr.checked);
   });
-  bindHist(() => renderGroup(g));
+  bindHist(() => renderGroup(g, sem));
   window.scrollTo(0, 0);
 }
 function goHome() { exam = null; store.del('krt.exam'); renderHome(); }
@@ -144,7 +150,7 @@ function renderBar() {
     <div class="bar-prog" id="progress"></div>
     <button class="btn finish" id="finishBtn">Завершить</button><button class="link" id="quitBtn">Прервать попытку</button></div>`;
   document.getElementById('finishBtn').onclick = confirmFinish;
-  document.getElementById('quitBtn').onclick = () => ask('<p>Прервать попытку? Ответы не сохранятся и в историю не попадут.</p>', [{ label: 'Прервать', cls: 'danger', fn: () => { const g = COURSES[exam.course].group; exam = null; store.del('krt.exam'); location.hash = g; renderHome(); } }, { label: 'Продолжить' }]);
+  document.getElementById('quitBtn').onclick = () => ask('<p>Прервать попытку? Ответы не сохранятся и в историю не попадут.</p>', [{ label: 'Прервать', cls: 'danger', fn: () => { const g = COURSES[exam.course].group + (semWorks(COURSES[exam.course].group)[1].includes(exam.course) ? '-2' : ''); exam = null; store.del('krt.exam'); location.hash = g; renderHome(); } }, { label: 'Продолжить' }]);
   stopTimer(); tick(); timerId = setInterval(tick, 500);
 }
 function confirmFinish() {
@@ -153,7 +159,7 @@ function confirmFinish() {
 }
 function unanswered() {
   const a = exam.answers;
-  if (exam.course === 'prog' || exam.course === 'prog2') return getData().filter((q, i) => { const x = a[i]; return x == null || x === '' || (Array.isArray(x) && !x.length); }).length;
+  if (['prog', 'prog2', 'prog3'].includes(exam.course)) return getData().filter((q, i) => { const x = a[i]; return x == null || x === '' || (Array.isArray(x) && !x.length) || (q.type === 'cats' && Object.values(x).filter(Boolean).length < q.items.length); }).length;
   if (exam.course === 'opd2') { const v = getData(); let n = a.f == null ? 1 : 0; v.rows.forEach((r, i) => BCOMP.COLS.forEach(c => { const x = (a.t || {})[i + c]; if (x == null || x === '') n++; })); return n; }
   return ['a', 'b', 's', 'C', 'V'].filter(k => a[k] == null || a[k] === '').length;
 }
@@ -165,9 +171,10 @@ function renderProg() {
     let inp = '';
     if (q.type === 'text') inp = `<input class="ans" data-q="${i}" value="${esc(a[i] || '')}" placeholder="${exam.course === 'prog2' ? 'Мой ответ' : 'Введите строку'}" autocomplete="off" spellcheck="false" aria-label="Ответ на вопрос ${i + 1}">`;
     else if (q.type === 'single') inp = '<div class="opts">' + q.opts.map((o, j) => `<label class="opt"><input type="radio" name="q${i}" data-q="${i}" value="${j}" ${a[i] === j ? 'checked' : ''}><span>${esc(o)}</span></label>`).join('') + '</div>';
+    else if (q.type === 'cats') inp = '<div class="cats">' + q.items.map((it, k) => `<label class="catrow"><span>${esc(it)}</span><select data-q="${i}" data-k="${k}"><option value="">— категория —</option>${q.cats.map(c => `<option ${(a[i] || {})[k] === c ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select></label>`).join('') + '</div>';
     else inp = '<div class="opts">' + q.opts.map((o, j) => `<label class="opt"><input type="checkbox" data-q="${i}" value="${j}" ${(a[i] || []).includes(j) ? 'checked' : ''}><span>${esc(o)}</span></label>`).join('') + '</div>';
     return `<li class="q" id="q${i}"><h3><span class="qn">${i + 1}.</span> ${esc(q.prompt)}</h3>
-      ${q.code ? `<pre class="code">${esc(q.code)}</pre>` : ''}${q.call ? `<p class="call">${esc(q.call)}</p>` : ''}
+      ${q.pre ? `<pre class="code">${esc(q.pre)}</pre><p class="call">Код:</p>` : ''}${q.code ? `<pre class="code">${esc(q.code)}</pre>` : ''}${q.call ? `<p class="call">${esc(q.call)}</p>` : ''}${q.note ? `<p class="call">${esc(q.note)}</p>` : ''}
       ${q.type === 'multi' ? '<details class="howto"><summary>Как оценивается?</summary><p>Балл = (верно отмеченные − неверно отмеченные) / число верных вариантов, но не меньше нуля.</p></details>' : ''}
       ${q.pts ? `<p class="pts">Баллы за вопрос: ${q.pts.toFixed(2)}</p>` : ''}${inp}</li>`;
   }).join('') + '</ol><div class="endrow"><button class="btn primary" id="finish2">Завершить попытку</button></div></div></section>';
@@ -176,6 +183,7 @@ function renderProg() {
     const i = +el.dataset.q;
     if (el.type === 'radio') exam.answers[i] = +el.value;
     else if (el.type === 'checkbox') exam.answers[i] = [...main.querySelectorAll('input[type=checkbox][data-q="' + i + '"]:checked')].map(x => +x.value);
+    else if (el.dataset.k != null) exam.answers[i] = Object.assign({}, exam.answers[i], { [el.dataset.k]: el.value });
     else exam.answers[i] = el.value;
     save(); updProgress();
   };
@@ -184,7 +192,7 @@ function renderProg() {
 }
 function updProgress() {
   const p = document.getElementById('progress'); if (!p) return;
-  const total = exam.course === 'prog' || exam.course === 'prog2' ? getData().length : exam.course === 'opd2' ? getData().rows.length * 8 + 1 : 5, done = total - unanswered();
+  const total = ['prog', 'prog2', 'prog3'].includes(exam.course) ? getData().length : exam.course === 'opd2' ? getData().rows.length * 8 + 1 : 5, done = total - unanswered();
   p.textContent = (exam.course === 'opd2' ? 'Заполнено ' : 'Отвечено ') + done + ' из ' + total;
 }
 
@@ -382,7 +390,7 @@ function renderExam() {
   main.onclick = main.onkeydown = null;
   if (exam.finishedAt) return renderResult();
   renderBar();
-  if (exam.course === 'prog' || (exam.course === 'prog2' && !exam.train)) renderProg(); else if (exam.course === 'prog2') renderSlide(); else if (exam.course === 'opd2') renderOpd2(); else renderOpd();
+  if (exam.course === 'prog' || exam.course === 'prog3' || (exam.course === 'prog2' && !exam.train)) renderProg(); else if (exam.course === 'prog2') renderSlide(); else if (exam.course === 'opd2') renderOpd2(); else renderOpd();
   window.scrollTo(0, 0);
 }
 
@@ -409,7 +417,7 @@ function finish(timeout) {
   exam.finishedAt = Math.min(Date.now(), exam.startedAt + exam.dur); exam.timeout = !!timeout; save();
   let score;
   if (exam.course === 'prog') { const g = gradeProg(); score = g.score.toFixed(2) + ' / ' + g.max.toFixed(2); }
-  else if (exam.course === 'prog2') { const qs = getData(); score = qs.reduce((t, q, i) => t + KR2.grade(q, exam.answers[i]) * q.pts, 0).toFixed(2) + ' / 1.00'; }
+  else if (exam.course === 'prog2' || exam.course === 'prog3') { const qs = getData(), tot = qs.reduce((t, q) => t + q.pts, 0); score = qs.reduce((t, q, i) => t + QL(exam.course).grade(q, exam.answers[i]) * q.pts, 0).toFixed(2) + ' / ' + tot.toFixed(2); }
   else score = pct((exam.course === 'opd2' ? gradeOpd2() : gradeOpd()).total);
   const hist = store.get('krt.hist', []); hist.push({ course: exam.course, label: exam.label, score, when: exam.finishedAt, timeout: exam.timeout });
   store.set('krt.hist', hist.slice(-50));
@@ -440,19 +448,20 @@ function renderResult() {
           ${q.code ? `<pre class="code">${esc(q.code)}</pre>` : ''}${q.call ? `<p class="call">${esc(q.call)}</p>` : ''}<p class="pts got">Полученные баллы за вопрос ${(gr * q.pts).toFixed(2)}/${q.pts.toFixed(2)}</p>${body}
           ${q.explain ? `<p class="explain">${esc(q.explain)}</p>` : ''}</li>`;
       }).join('') + '</ol></div>';
-  } else if (exam.course === 'prog2') {
-    const qs = getData(), a = exam.answers, per = qs.map((q, i) => KR2.grade(q, a[i])), sum = per.reduce((t, x, i) => t + x * qs[i].pts, 0);
+  } else if (exam.course === 'prog2' || exam.course === 'prog3') {
+    const qs = getData(), a = exam.answers, per = qs.map((q, i) => QL(exam.course).grade(q, a[i])), sum = per.reduce((t, x, i) => t + x * qs[i].pts, 0), tot = qs.reduce((t, q) => t + q.pts, 0);
     const nOk = per.filter(x => x === 1).length, nPart = per.filter(x => x > 0 && x < 1).length;
-    html = resultHead(sum.toFixed(2) + '<small> из 1.00</small>', 'Верно: <b>' + nOk + '</b>, частично: <b>' + nPart + '</b>, неверно или без ответа: <b>' + (qs.length - nOk - nPart) + '</b> (' + pct(sum) + ')') +
+    html = resultHead(sum.toFixed(2) + '<small> из ' + tot.toFixed(2) + '</small>', 'Верно: <b>' + nOk + '</b>, частично: <b>' + nPart + '</b>, неверно или без ответа: <b>' + (qs.length - nOk - nPart) + '</b> (' + pct(sum / tot) + ')') +
       '<div class="sheet"><ol class="qlist review">' + qs.map((q, i) => {
         const x = a[i], g = per[i];
         const acc = q.accept || [q.answer];
         const body = q.type === 'text'
           ? `<p>Ваш ответ: <code class="ua">${x ? esc(x) : '—'}</code></p><p>${acc.length > 1 ? 'Правильные ответы' : 'Правильный ответ'}: ${acc.map(t => '<code class="ra">' + esc(t) + '</code>').join(' или ')}</p>`
           : q.type === 'single' ? '<ul class="olist">' + q.opts.map((o, j) => `<li class="${j === q.correctIdx ? 'right' : ''} ${x === j ? 'chosen' : ''}">${esc(o)}${x === j ? ' <span class="mk">ваш выбор</span>' : ''}</li>`).join('') + '</ul>'
+          : q.type === 'cats' ? '<ul class="olist">' + q.items.map((it, k) => { const u = (x || {})[k]; return `<li class="${u === q.correct[k] ? 'right' : 'chosen'}">${esc(it)} → <b>${esc(q.correct[k])}</b>${u && u !== q.correct[k] ? ' <span class="mk">у вас: ' + esc(u) + '</span>' : !u ? ' <span class="mk">не распределено</span>' : ''}</li>`; }).join('') + '</ul>'
           : '<ul class="olist">' + q.opts.map((o, j) => `<li class="${q.correct[j] ? 'right' : ''} ${(x || []).includes(j) ? 'chosen' : ''}">${esc(o)}${(x || []).includes(j) ? ' <span class="mk">отмечено</span>' : ''}</li>`).join('') + '</ul>';
         return `<li class="q ${g === 1 ? 'ok' : g > 0 ? 'part' : 'bad'}"><h3><span class="qn">${i + 1}.</span> ${esc(q.prompt)}</h3>
-          ${q.code ? `<pre class="code">${esc(q.code)}</pre>` : ''}<p class="pts got">Полученные баллы за вопрос ${(g * q.pts).toFixed(2)}/${q.pts.toFixed(2)}</p>${body}
+          ${q.pre ? `<pre class="code">${esc(q.pre)}</pre>` : ''}${q.code ? `<pre class="code">${esc(q.code)}</pre>` : ''}<p class="pts got">Полученные баллы за вопрос ${(g * q.pts).toFixed(2)}/${q.pts.toFixed(2)}</p>${body}
           <p class="explain">${esc(q.explain)}</p></li>`;
       }).join('') + '</ol></div>';
   } else if (exam.course === 'opd2') {
@@ -479,7 +488,7 @@ function renderResult() {
        </tbody></table></div><h3>Разбор</h3><pre class="code">${esc(GEN.explainFlags(d.A, d.B))}</pre></div>`;
   }
   main.innerHTML = '<section class="band result' + (exam.course === 'opd' ? ' opd-res' : '') + '">' + html + '</section>';
-  document.getElementById('home').onclick = () => { const g = COURSES[exam.course].group; exam = null; store.del('krt.exam'); location.hash = g; renderHome(); };
+  document.getElementById('home').onclick = () => { const g = COURSES[exam.course].group + (semWorks(COURSES[exam.course].group)[1].includes(exam.course) ? '-2' : ''); exam = null; store.del('krt.exam'); location.hash = g; renderHome(); };
   document.getElementById('again').onclick = () => startExam(exam.course, 'r', exam.train);
   const ob = document.getElementById('onlyBad');
   if (ob) { const tb = document.getElementById('chkTbl'); const f = () => tb.classList.toggle('only-bad', ob.checked); ob.onchange = f; f(); }
