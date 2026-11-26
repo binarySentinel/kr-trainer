@@ -30,6 +30,8 @@ const COURSES = {
     desc: 'ООП в Java: принципы SOLID, переопределение и перегрузка методов, полиморфизм, вложенные классы, порядок инициализации, исключения, enum, record, интерфейсы.', meta: '20 вопросов · 30 минут · максимум 1.00 балла' },
   prog3: { group: 'prog', title: 'Программирование', name: 'Контрольная работа №3', short: 'КР №3', min: 20,
     desc: 'Потоки ввода-вывода java.io, коллекции, функциональные интерфейсы и лямбды, JavaFX, локализация (ResourceBundle), состояния потоков, сетевые классы, Stream API, паттерны проектирования.', meta: '10 вопросов · 20 минут · максимум 20 баллов' },
+  opd4: { group: 'opd', title: 'ОПД', name: 'Рубежный контроль №4', short: 'РК №4', min: 60,
+    desc: 'Трассировка микропрограммы: выполнение одной команды БЭВМ по микрокомандам. Для каждой микрокоманды — её адрес, содержимое MR, значения регистров, флаги и адрес следующей микрокоманды.', meta: '1 задание · 60 минут', train: true },
   opd: { group: 'opd', title: 'ОПД', name: 'Рубежный контроль №1', short: 'РК №1', min: CFG.opdMinutes,
     desc: 'Задание 1: дерево каталогов, содержимое файлов и права доступа (в терминале).<br>Задание 2: перевод в 16-ю систему, сложение в 16-разрядном дополнительном коде, флаги C и V.', meta: '2 задания · ' + CFG.opdMinutes + ' минут' },
   opd2: { group: 'opd', title: 'ОПД', name: 'Рубежный контроль №2', short: 'РК №2', min: CFG.opd2Minutes,
@@ -40,7 +42,7 @@ let data = null, dataKey = '', timerId = null, shell = null;
 
 function getData() {
   const key = exam.course + ':' + exam.seed;
-  if (key !== dataKey) { data = exam.course === 'prog' ? GEN.buildProg(exam.seed) : exam.course === 'prog2' ? KR2.build(exam.seed) : exam.course === 'prog3' ? KR3.build(exam.seed) : exam.course === 'opd2' ? BCOMP.buildVariant(exam.seed) : GEN.buildOpd(exam.seed); dataKey = key; }
+  if (key !== dataKey) { data = exam.course === 'prog' ? GEN.buildProg(exam.seed) : exam.course === 'prog2' ? KR2.build(exam.seed) : exam.course === 'prog3' ? KR3.build(exam.seed) : exam.course === 'opd2' ? BCOMP.buildVariant(exam.seed) : exam.course === 'opd4' ? MC.build(exam.seed) : GEN.buildOpd(exam.seed); dataKey = key; }
   return data;
 }
 function save() { store.set('krt.exam', exam); }
@@ -160,6 +162,7 @@ function confirmFinish() {
 function unanswered() {
   const a = exam.answers;
   if (['prog', 'prog2', 'prog3'].includes(exam.course)) return getData().filter((q, i) => { const x = a[i]; return x == null || x === '' || (Array.isArray(x) && !x.length) || (q.type === 'cats' && Object.values(x).filter(Boolean).length < q.items.length); }).length;
+  if (exam.course === 'opd4') { const v = getData(), m = a.m || {}; let n = 0; v.rows.forEach((r, i) => MC.COLS.forEach(c => { if (!m[i + '|' + c]) n++; })); return n; }
   if (exam.course === 'opd2') { const v = getData(); let n = a.f == null ? 1 : 0; v.rows.forEach((r, i) => BCOMP.COLS.forEach(c => { const x = (a.t || {})[i + c]; if (x == null || x === '') n++; })); return n; }
   return ['a', 'b', 's', 'C', 'V'].filter(k => a[k] == null || a[k] === '').length;
 }
@@ -192,8 +195,8 @@ function renderProg() {
 }
 function updProgress() {
   const p = document.getElementById('progress'); if (!p) return;
-  const total = ['prog', 'prog2', 'prog3'].includes(exam.course) ? getData().length : exam.course === 'opd2' ? getData().rows.length * 8 + 1 : 5, done = total - unanswered();
-  p.textContent = (exam.course === 'opd2' ? 'Заполнено ' : 'Отвечено ') + done + ' из ' + total;
+  const total = ['prog', 'prog2', 'prog3'].includes(exam.course) ? getData().length : exam.course === 'opd2' ? getData().rows.length * 8 + 1 : exam.course === 'opd4' ? getData().rows.length * MC.COLS.length : 5, done = total - unanswered();
+  p.textContent = (exam.course === 'opd2' || exam.course === 'opd4' ? 'Заполнено ' : 'Отвечено ') + done + ' из ' + total;
 }
 
 /* ---------- экзамен: программирование КР2 (по одному вопросу) ---------- */
@@ -386,11 +389,85 @@ function gradeOpd2() {
   return { ok, tot, t1, t2, total: 0.8 * t1 + 0.2 * t2 };
 }
 
+const MCH = { mp: 'МП', mem: '', mr: 'MR', ip: 'IP', cr: 'CR', ar: 'AR', dr: 'DR', sp: 'SP', br: 'BR', ac: 'AC', nzvc: 'NZVC', mp2: 'МП след.' };
+function mcTable(v, mode) {
+  const a = exam.answers, m = a.m || {}, shown = a.shown || {}, tr = mode === 'exam' && exam.train;
+  const head = '<tr><th>№</th>' + MC.COLS.map(c => '<th>' + (c === 'mem' ? 'Ячейка ' + MC.hx(v.watch, 3) : MCH[c]) + '</th>').join('') + (tr ? '<th></th><th></th><th></th>' : '') + (mode === 'review' ? '<th>Микрокоманда</th>' : '') + '</tr>';
+  const body = v.rows.map((exp, i) => {
+    const cells = MC.COLS.map(c => {
+      const val = m[i + '|' + c] || '';
+      if (mode === 'exam') return `<td><input class="tc${c === 'mr' ? ' w10' : c.startsWith('mp') ? ' w2' : ''}" data-i="${i}" data-c="${c}" value="${esc(val)}" maxlength="${MC.WID[c]}" autocomplete="off" spellcheck="false" aria-label="${MCH[c] || 'Ячейка'}, строка ${i + 1}"></td>`;
+      const ok = !shown[i] && MC.norm(c, val) === exp[c];
+      return ok ? `<td class="cok">${esc(exp[c])}</td>` : `<td class="cbad"><s>${esc(val || '—')}</s><b>${esc(exp[c])}</b></td>`;
+    }).join('');
+    const btns = tr ? `<td><button class="mini" data-copy="${i}" title="Скопировать регистры из строки выше" ${i ? '' : 'disabled'}>↓</button></td><td><button class="mini" data-check="${i}">Проверить</button></td><td><button class="mini" data-show="${i}">Показать</button></td>` : '';
+    const d = mode === 'review' ? `<td class="mn">${esc((MC.LB[parseInt(exp.mp, 16)] ? MC.LB[parseInt(exp.mp, 16)] + ': ' : '') + exp.desc)}</td>` : '';
+    return `<tr class="cmd${shown[i] ? ' shown' : ''}"><td>${i + 1}</td>${cells}${btns}${d}</tr>`;
+  }).join('');
+  return '<div class="scroll"><table class="trace mct">' + head + body + '</table></div>';
+}
+function mcStart(v) {
+  const H = MC.hx, cols = [['IP', H(v.ip, 3)], ['CR', H(v.cr, 4)], ['AR', H(v.ar, 3)], ['DR', H(v.dr, 4)], ['SP', H(v.sp, 3)], ['BR', H(v.br, 4)], ['AC', H(v.ac, 4)], ['NZVC', MC.nzvc(v.ps)], ['MR', '0000000000'], ['МП', '01']];
+  return '<div class="scroll"><table class="trace"><tr>' + cols.map(c => '<th>' + c[0] + '</th>').join('') + '</tr><tr>' + cols.map(c => '<td style="padding:0 8px">' + c[1] + '</td>').join('') + '</tr></table></div>';
+}
+function mcListing() {
+  return '<details class="mclist"><summary>Микропрограмма БЭВМ</summary><div class="scroll"><table class="trace"><tr><th>Адрес</th><th>МК</th><th>Метка</th><th>Действие</th></tr>' +
+    MC.W.map((w, i) => `<tr><td>${MC.hx(i, 2)}</td><td style="padding:0 8px">${w}</td><td style="padding:0 8px">${esc(MC.LB[i])}</td><td class="mn">${esc(MC.D[i])}</td></tr>`).join('') + '</table></div></details>';
+}
+function renderOpd4() {
+  const v = getData(), a = exam.answers;
+  a.m = a.m || {}; a.shown = a.shown || {};
+  main.innerHTML = `<section class="band exam opd2">
+  <div class="sheet task">
+    <h2>Задание</h2>
+    <p>По адресу ${MC.hx(v.ip, 3)} находится команда <b>${esc(v.mnem)}</b> (код <code>${v.code}</code>), в ячейке ${MC.hx(v.watch, 3)} записано <code>${MC.hx(v.ip, 4)}</code>. Остальные ячейки памяти содержат 0000. Начальное состояние:</p>
+    ${mcStart(v)}
+    <p>Выполните команду по тактам (по одной микрокоманде) до останова. Для каждой микрокоманды укажите: адрес микрокоманды (МП), содержимое ячейки ${MC.hx(v.watch, 3)}, MR и значения регистров <b>после выполнения</b> микрокоманды, адрес следующей микрокоманды.</p>
+    <p class="hint">МП — две шестнадцатеричные цифры, MR — десять, IP, AR, SP — три, остальные регистры — четыре. NZVC — четыре бита, например <code>0101</code>. Строк в таблице столько же, сколько микрокоманд будет выполнено.</p>
+    ${mcListing()}
+    ${mcTable(v, 'exam')}
+  </div>
+  <div class="endrow"><button class="btn primary" id="finish2">Завершить попытку</button></div>
+  </section>`;
+  main.oninput = main.onchange = e => {
+    const el = e.target; if (el.dataset.i == null) return;
+    el.value = el.value.toUpperCase(); a.m[el.dataset.i + '|' + el.dataset.c] = el.value; el.classList.remove('ok', 'bad');
+    save(); updProgress();
+  };
+  main.onkeydown = e => {
+    const el = e.target; if (el.dataset.i == null) return;
+    const i = +el.dataset.i, k = MC.COLS.indexOf(el.dataset.c);
+    let ni = i, nk = k;
+    if (e.key === 'Enter' || (e.key === 'ArrowRight' && el.selectionStart === el.value.length)) nk++;
+    else if (e.key === 'ArrowLeft' && el.selectionStart === 0) nk--;
+    else if (e.key === 'ArrowDown') ni++; else if (e.key === 'ArrowUp') ni--; else return;
+    if (nk >= MC.COLS.length) { nk = 0; ni++; } if (nk < 0) { nk = MC.COLS.length - 1; ni--; }
+    const nx = main.querySelector(`input[data-i="${ni}"][data-c="${MC.COLS[nk]}"]`);
+    if (nx) { e.preventDefault(); nx.focus(); nx.select(); }
+  };
+  main.onclick = e => {
+    const ds = e.target.dataset || {}, c = ds.check ?? ds.show ?? ds.copy;
+    if (c == null) return;
+    const i = +c, exp = v.rows[i];
+    if (ds.copy != null) { ['mem', 'ip', 'cr', 'ar', 'dr', 'sp', 'br', 'ac', 'nzvc'].forEach(col => { if (!a.m[i + '|' + col]) a.m[i + '|' + col] = a.m[(i - 1) + '|' + col] || ''; }); if (!a.m[i + '|mp']) a.m[i + '|mp'] = a.m[(i - 1) + '|mp2'] || ''; save(); renderOpd4(); updProgress(); return; }
+    if (ds.show != null) { MC.COLS.forEach(col => { a.m[i + '|' + col] = exp[col]; }); a.shown[i] = true; save(); renderOpd4(); updProgress(); return; }
+    MC.COLS.forEach(col => { const inp = main.querySelector(`input[data-i="${i}"][data-c="${col}"]`); const ok = MC.norm(col, a.m[i + '|' + col]) === exp[col]; inp.classList.toggle('ok', ok); inp.classList.toggle('bad', !ok); });
+  };
+  document.getElementById('finish2').onclick = confirmFinish;
+  updProgress();
+}
+function gradeOpd4() {
+  const v = getData(), a = exam.answers, m = a.m || {}, shown = a.shown || {};
+  let ok = 0, tot = 0;
+  v.rows.forEach((r, i) => MC.COLS.forEach(c => { tot++; if (!shown[i] && MC.norm(c, m[i + '|' + c]) === r[c]) ok++; }));
+  return { ok, tot, total: ok / tot };
+}
+
 function renderExam() {
   main.onclick = main.onkeydown = null;
   if (exam.finishedAt) return renderResult();
   renderBar();
-  if (exam.course === 'prog' || exam.course === 'prog3' || (exam.course === 'prog2' && !exam.train)) renderProg(); else if (exam.course === 'prog2') renderSlide(); else if (exam.course === 'opd2') renderOpd2(); else renderOpd();
+  if (exam.course === 'prog' || exam.course === 'prog3' || (exam.course === 'prog2' && !exam.train)) renderProg(); else if (exam.course === 'prog2') renderSlide(); else if (exam.course === 'opd2') renderOpd2(); else if (exam.course === 'opd4') renderOpd4(); else renderOpd();
   window.scrollTo(0, 0);
 }
 
@@ -418,7 +495,7 @@ function finish(timeout) {
   let score;
   if (exam.course === 'prog') { const g = gradeProg(); score = g.score.toFixed(2) + ' / ' + g.max.toFixed(2); }
   else if (exam.course === 'prog2' || exam.course === 'prog3') { const qs = getData(), tot = qs.reduce((t, q) => t + q.pts, 0); score = qs.reduce((t, q, i) => t + QL(exam.course).grade(q, exam.answers[i]) * q.pts, 0).toFixed(2) + ' / ' + tot.toFixed(2); }
-  else score = pct((exam.course === 'opd2' ? gradeOpd2() : gradeOpd()).total);
+  else score = pct((exam.course === 'opd2' ? gradeOpd2() : exam.course === 'opd4' ? gradeOpd4() : gradeOpd()).total);
   const hist = store.get('krt.hist', []); hist.push({ course: exam.course, label: exam.label, score, when: exam.finishedAt, timeout: exam.timeout });
   store.set('krt.hist', hist.slice(-50));
   renderResult();
@@ -464,6 +541,10 @@ function renderResult() {
           ${q.pre ? `<pre class="code">${esc(q.pre)}</pre>` : ''}${q.code ? `<pre class="code">${esc(q.code)}</pre>` : ''}<p class="pts got">Полученные баллы за вопрос ${(g * q.pts).toFixed(2)}/${q.pts.toFixed(2)}</p>${body}
           <p class="explain">${esc(q.explain)}</p></li>`;
       }).join('') + '</ol></div>';
+  } else if (exam.course === 'opd4') {
+    const v = getData(), g = gradeOpd4(), nShown = Object.keys(exam.answers.shown || {}).length;
+    html = resultHead(pct(g.total), 'Верно заполнено ячеек: <b>' + g.ok + '</b> из ' + g.tot + (nShown ? '<br><span class="muted">Строк, открытых кнопкой «Показать»: ' + nShown + ' (они не засчитываются)</span>' : '')) +
+      `<div class="sheet task"><h2>${esc(v.mnem)} (${v.code})</h2><p class="muted">Зелёным — верно; красным — ваше значение зачёркнуто, рядом правильное. В последнем столбце — что делает микрокоманда.</p>${mcStart(v)}${mcTable(v, 'review')}</div>`;
   } else if (exam.course === 'opd2') {
     const v = getData(), g = gradeOpd2(), a = exam.answers, nShown = Object.keys(a.shown || {}).length;
     html = resultHead(pct(g.total), 'Задание 1: <b>' + pct(g.t1) + '</b> (' + g.ok + ' из ' + g.tot + ' ячеек), задание 2: <b>' + (g.t2 ? 'верно' : 'неверно') + '</b>' + (nShown ? '<br><span class="muted">Строк, открытых кнопкой «Показать»: ' + nShown + ' (они не засчитываются)</span>' : '')) +
